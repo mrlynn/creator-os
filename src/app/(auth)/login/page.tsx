@@ -36,15 +36,17 @@ export default function LoginPage() {
         redirect: false,
       });
 
+      // NextAuth v5: result is { error, code } on failure, or undefined/null on success
       if (result?.error) {
         setError('Invalid email or password');
-      } else if (result?.url) {
-        window.location.href = '/app/dashboard';
+        setIsLoading(false);
+      } else {
+        // Success — hard navigate so the session cookie is picked up
+        window.location.replace('/app/dashboard');
       }
     } catch (err) {
       setError('Login failed. Please try again.');
       console.error('Login error:', err);
-    } finally {
       setIsLoading(false);
     }
   };

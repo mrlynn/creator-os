@@ -48,7 +48,16 @@ export const authConfig: NextAuthConfig = {
       const isOnApp = pathname.startsWith('/app');
 
       if (isOnApp) {
-        return isLoggedIn;
+        if (isLoggedIn) return true;
+        // Redirect to login, preserving the intended destination
+        const loginUrl = new URL('/login', request.nextUrl.origin);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        return Response.redirect(loginUrl);
+      }
+
+      // If already logged in and hitting /login, send to dashboard
+      if (pathname === '/login' && isLoggedIn) {
+        return Response.redirect(new URL('/app/dashboard', request.nextUrl.origin));
       }
 
       return true;
