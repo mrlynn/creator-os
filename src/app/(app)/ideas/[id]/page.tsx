@@ -11,9 +11,11 @@ import {
   Grid,
   Stack,
   Chip,
+  Alert,
 } from '@mui/material';
 import { useParams, useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 
 interface Idea {
   _id: string;
@@ -37,6 +39,8 @@ export default function IdeaDetailPage() {
   const [idea, setIdea] = useState<Idea | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creatingScript, setCreatingScript] = useState(false);
+  const [scriptError, setScriptError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchIdea = async () => {
@@ -56,6 +60,30 @@ export default function IdeaDetailPage() {
     fetchIdea();
   }, [ideaId]);
 
+  const handleCreateScript = async () => {
+    setCreatingScript(true);
+    setScriptError(null);
+
+    try {
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create script');
+      }
+
+      const script = await response.json();
+      router.push(`/scripts/${script._id}`);
+    } catch (err) {
+      setScriptError(err instanceof Error ? err.message : 'An error occurred');
+      setCreatingScript(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -70,10 +98,7 @@ export default function IdeaDetailPage() {
     return (
       <Container>
         <Box sx={{ py: 3 }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={() => router.back()}
-          >
+          <Button startIcon={<ArrowBackIcon />} onClick={() => router.back()}>
             Back
           </Button>
           <Typography color="error">{error || 'Idea not found'}</Typography>
@@ -119,11 +144,33 @@ export default function IdeaDetailPage() {
                   <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                     Notes
                   </Typography>
-                  <Typography variant="body1">
-                    {idea.notes}
-                  </Typography>
+                  <Typography variant="body1">{idea.notes}</Typography>
                 </>
               )}
+
+              {scriptError && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {scriptError}
+                </Alert>
+              )}
+
+              <Box sx={{ mt: 3 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={
+                    creatingScript ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <AutoFixHighIcon />
+                    )
+                  }
+                  onClick={handleCreateScript}
+                  disabled={creatingScript}
+                >
+                  {creatingScript ? 'Creating Script...' : 'Create Script'}
+                </Button>
+              </Box>
             </Grid>
 
             <Grid item xs={12} md={4}>
@@ -140,9 +187,7 @@ export default function IdeaDetailPage() {
                     <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>
                       Virality Score
                     </Typography>
-                    <Typography variant="h6">
-                      {idea.viralityScore}/100
-                    </Typography>
+                    <Typography variant="h6">{idea.viralityScore}/100</Typography>
                   </>
                 )}
               </Paper>

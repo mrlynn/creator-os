@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -15,11 +15,14 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Snackbar,
+  LinearProgress,
 } from '@mui/material';
 import { useParams } from 'next/navigation';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface Script {
   _id: string;
@@ -58,9 +61,14 @@ export default function ScriptDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generateCountdown, setGenerateCountdown] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [formData, setFormData] = useState<Partial<Script>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [lastTokensUsed, setLastTokensUsed] = useState<number | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const fetchScript = async () => {
@@ -108,12 +116,25 @@ export default function ScriptDetailPage() {
 
   const handleGenerate = async () => {
     if (!formData.outline) {
-      setError('Please provide an outline first');
+      setGenerateError('Please provide an outline first');
       return;
     }
 
     setGenerating(true);
-    setError(null);
+    setGenerateError(null);
+    setLastTokensUsed(null);
+
+    // Start countdown timer (GPT-4 typically takes 20-40s for a full script)
+    setGenerateCountdown(40);
+    countdownRef.current = setInterval(() => {
+      setGenerateCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     try {
       const response = await fetch(`/api/scripts/${scriptId}/generate`, {
@@ -122,14 +143,31 @@ export default function ScriptDetailPage() {
         body: JSON.stringify({ outline: formData.outline, audience: 'beginner' }),
       });
 
-      if (!response.ok) throw new Error('Failed to generate script');
-      const { script: updated } = await response.json();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Generation failed — check your outline and try again');
+      }
+
+      const result = await response.json();
+      const updated = result.script;
+      const tokensUsed = result.generation?.tokensUsed || null;
+
       setScript(updated);
       setFormData(updated);
+      setLastTokensUsed(tokensUsed);
+
+      const wordCount = updated.wordCount || 0;
+      const tokenMsg = tokensUsed ? ` • ${tokensUsed.toLocaleString()} tokens used` : '';
+      setSuccessMessage(`Script generated! ${wordCount} words${tokenMsg}`);
+
+      // Switch to sections tab so user sees the result
+      setTabValue(1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setGenerateError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
+      if (countdownRef.current) clearInterval(countdownRef.current);
       setGenerating(false);
+      setGenerateCountdown(0);
     }
   };
 
@@ -163,6 +201,14 @@ export default function ScriptDetailPage() {
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={5000}
+          onClose={() => setSuccessMessage(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          message={successMessage}
+        />
+
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Tab label="Outline & Generate" />
           <Tab label="Script Sections" />
@@ -180,14 +226,50 @@ export default function ScriptDetailPage() {
               multiline
               rows={6}
               placeholder="Describe what your script should cover..."
+              disabled={generating}
             />
+
+            {generating && (
+              <Box>
+                <LinearProgress sx={{ mb: 1 }} />
+                <Typography variant="body2" color="textSecondary" align="center">
+                  Generating with GPT-4
+                  {generateCountdown > 0 ? ` — about ${generateCountdown}s remaining` : '...'}
+                </Typography>
+              </Box>
+            )}
+
+            {generateError && (
+              <Alert
+                severity="error"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleGenerate}
+                  >
+                    Retry
+                  </Button>
+                }
+              >
+                {generateError}
+              </Alert>
+            )}
+
+            {lastTokensUsed && !generating && (
+              <Typography variant="caption" color="textSecondary">
+                Last generation: {lastTokensUsed.toLocaleString()} tokens used
+              </Typography>
+            )}
+
             <Button
               variant="contained"
-              startIcon={<AutoFixHighIcon />}
+              startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighIcon />}
               onClick={handleGenerate}
               disabled={generating}
             >
-              {generating ? <CircularProgress size={20} /> : 'Generate Script with AI'}
+              {generating ? 'Generating...' : 'Generate Script with AI'}
             </Button>
           </Stack>
         </TabPanel>
