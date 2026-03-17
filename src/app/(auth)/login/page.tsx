@@ -1,7 +1,16 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { Box, Button, Container, Typography, TextField, Divider } from '@mui/material';
+import {
+  Box,
+  Button,
+  Container,
+  Typography,
+  TextField,
+  Divider,
+  Alert,
+  CircularProgress,
+} from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { useState } from 'react';
 
@@ -9,6 +18,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGitHubLogin = async () => {
     await signIn('github', { redirectTo: '/app/dashboard' });
@@ -17,23 +27,23 @@ export default function LoginPage() {
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       const result = await signIn('credentials', {
         email,
         password,
-        redirectTo: '/app/dashboard',
         redirect: false,
       });
 
       if (result?.error) {
-        alert('Invalid credentials');
+        setError('Invalid email or password');
       } else if (result?.url) {
-        window.location.href = result.url;
+        window.location.href = '/app/dashboard';
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Login failed');
+    } catch (err) {
+      setError('Login failed. Please try again.');
+      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -58,65 +68,62 @@ export default function LoginPage() {
           AI & Developer Content Creation Platform
         </Typography>
 
-        {/* Development Login Form */}
-        <Box
-          component="form"
-          onSubmit={handleCredentialsLogin}
-          sx={{
-            width: '100%',
-            maxWidth: 400,
-            p: 3,
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: 2,
-            bgcolor: 'background.paper',
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
-            Development Login
-          </Typography>
-          <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-            Email: admin@creatortos.dev | Password: dev123456
-          </Typography>
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            margin="normal"
-            required
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="outlined"
-            disabled={isLoading}
-            sx={{ mt: 2 }}
-          >
-            {isLoading ? 'Signing in...' : 'Sign in with Email'}
-          </Button>
-        </Box>
-
-        <Divider sx={{ width: '100%', maxWidth: 400 }}>OR</Divider>
-
         <Button
           variant="contained"
           size="large"
           startIcon={<GitHubIcon />}
           onClick={handleGitHubLogin}
+          fullWidth
         >
           Sign in with GitHub
         </Button>
+
+        {process.env.NODE_ENV !== 'production' && (
+          <>
+            <Divider sx={{ width: '100%' }}>
+              <Typography variant="caption" color="textSecondary">
+                dev only
+              </Typography>
+            </Divider>
+
+            <Box
+              component="form"
+              onSubmit={handleCredentialsLogin}
+              sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}
+            >
+              {error && <Alert severity="error">{error}</Alert>}
+
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@creatortos.dev"
+                required
+                size="small"
+              />
+              <TextField
+                label="Password"
+                type="password"
+                fullWidth
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                size="small"
+              />
+              <Button
+                type="submit"
+                variant="outlined"
+                fullWidth
+                disabled={isLoading}
+                startIcon={isLoading ? <CircularProgress size={16} /> : null}
+              >
+                {isLoading ? 'Signing in...' : 'Sign in with credentials'}
+              </Button>
+            </Box>
+          </>
+        )}
       </Box>
     </Container>
   );
