@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthConfig } from 'next-auth';
 import GitHub from 'next-auth/providers/github';
+import Credentials from 'next-auth/providers/credentials';
 
 export const authConfig: NextAuthConfig = {
   pages: {
@@ -9,6 +10,35 @@ export const authConfig: NextAuthConfig = {
     GitHub({
       clientId: process.env.GITHUB_ID || '',
       clientSecret: process.env.GITHUB_SECRET || '',
+    }),
+    // Development credentials provider
+    Credentials({
+      name: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
+      },
+      async authorize(credentials) {
+        // Only allow in development
+        if (process.env.NODE_ENV !== 'development') {
+          return null;
+        }
+
+        // Test admin credentials
+        if (
+          credentials?.email === 'admin@creatortos.dev' &&
+          credentials?.password === 'dev123456'
+        ) {
+          return {
+            id: 'dev-admin-001',
+            name: 'Development Admin',
+            email: 'admin@creatortos.dev',
+            image: null,
+          };
+        }
+
+        return null;
+      },
     }),
   ],
   callbacks: {
