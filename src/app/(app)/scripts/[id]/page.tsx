@@ -17,16 +17,23 @@ import {
   AccordionDetails,
   Snackbar,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  MenuItem,
 } from '@mui/material';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 
 interface Script {
   _id: string;
   title: string;
+  ideaId?: string | { _id: string };
   outline?: string;
   hook?: string;
   problem?: string;
@@ -36,6 +43,11 @@ interface Script {
   outro?: string;
   status: string;
   wordCount: number;
+}
+
+interface Series {
+  _id: string;
+  title: string;
 }
 
 interface TabPanelProps {
@@ -55,6 +67,7 @@ function TabPanel(props: TabPanelProps) {
 
 export default function ScriptDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const scriptId = params.id as string;
 
   const [script, setScript] = useState<Script | null>(null);
@@ -69,6 +82,13 @@ export default function ScriptDetailPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [lastTokensUsed, setLastTokensUsed] = useState<number | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Episode creation dialog
+  const [episodeDialogOpen, setEpisodeDialogOpen] = useState(false);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
+  const [episodeForm, setEpisodeForm] = useState({ title: '', description: '', seriesId: '' });
+  const [creatingEpisode, setCreatingEpisode] = useState(false);
+  const [episodeError, setEpisodeError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchScript = async () => {
@@ -87,6 +107,74 @@ export default function ScriptDetailPage() {
 
     fetchScript();
   }, [scriptId]);
+
+  const fetchSeries = async () => {
+    try {
+      const response = await fetch('/api/series');
+      if (response.ok) {
+        const { data } = await response.json();
+        setSeriesList(data || []);
+      }
+    } catch {
+      // Series list is optional — silently ignore failures
+    }
+  };
+
+  const handleOpenEpisodeDialog = () => {
+    setEpisodeForm({ title: script?.title || '', description: '', seriesId: '' });
+    setEpisodeError(null);
+    fetchSeries();
+    setEpisodeDialogOpen(true);
+  };
+
+  const handleCreateEpisode = async () => {
+    if (!episodeForm.title.trim()) {
+      setEpisodeError('Title is required');
+      return;
+    }
+
+    const ideaId =
+      script?.ideaId && typeof script.ideaId === 'object'
+        ? script.ideaId._id
+        : script?.ideaId;
+
+    if (!ideaId) {
+      setEpisodeError('This script is not linked to an idea. Cannot create episode.');
+      return;
+    }
+
+    setCreatingEpisode(true);
+    setEpisodeError(null);
+
+    try {
+      const payload: Record<string, string> = {
+        ideaId: ideaId as string,
+        scriptId,
+        title: episodeForm.title.trim(),
+      };
+      if (episodeForm.description.trim()) payload.description = episodeForm.description.trim();
+      if (episodeForm.seriesId) payload.seriesId = episodeForm.seriesId;
+
+      const response = await fetch('/api/episodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create episode');
+      }
+
+      setEpisodeDialogOpen(false);
+      setSuccessMessage('Episode created! Redirecting to pipeline...');
+      setTimeout(() => router.push('/app/pipeline'), 1200);
+    } catch (err) {
+      setEpisodeError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setCreatingEpisode(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -107,6 +195,7 @@ export default function ScriptDetailPage() {
       if (!response.ok) throw new Error('Failed to save script');
       const updated = await response.json();
       setScript(updated);
+      setSuccessMessage('Script saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -124,7 +213,6 @@ export default function ScriptDetailPage() {
     setGenerateError(null);
     setLastTokensUsed(null);
 
-    // Start countdown timer (GPT-4 typically takes 20-40s for a full script)
     setGenerateCountdown(40);
     countdownRef.current = setInterval(() => {
       setGenerateCountdown((prev) => {
@@ -159,8 +247,6 @@ export default function ScriptDetailPage() {
       const wordCount = updated.wordCount || 0;
       const tokenMsg = tokensUsed ? ` • ${tokensUsed.toLocaleString()} tokens used` : '';
       setSuccessMessage(`Script generated! ${wordCount} words${tokenMsg}`);
-
-      // Switch to sections tab so user sees the result
       setTabValue(1);
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : 'An error occurred');
@@ -192,9 +278,20 @@ export default function ScriptDetailPage() {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          {script.title}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Typography variant="h3" component="h1">
+            {script.title}
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<VideoLibraryIcon />}
+            onClick={handleOpenEpisodeDialog}
+            sx={{ mt: 0.5, flexShrink: 0, ml: 2 }}
+          >
+            Create Episode
+          </Button>
+        </Box>
+
         <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
           {script.wordCount} words • Status: {script.status}
         </Typography>
@@ -208,6 +305,61 @@ export default function ScriptDetailPage() {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
           message={successMessage}
         />
+
+        {/* Create Episode Dialog */}
+        <Dialog open={episodeDialogOpen} onClose={() => setEpisodeDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Create Episode</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              {episodeError && <Alert severity="error">{episodeError}</Alert>}
+              <TextField
+                label="Title"
+                required
+                fullWidth
+                value={episodeForm.title}
+                onChange={(e) => setEpisodeForm((p) => ({ ...p, title: e.target.value }))}
+                autoFocus
+              />
+              <TextField
+                label="Description"
+                fullWidth
+                multiline
+                rows={3}
+                value={episodeForm.description}
+                onChange={(e) => setEpisodeForm((p) => ({ ...p, description: e.target.value }))}
+              />
+              {seriesList.length > 0 && (
+                <TextField
+                  select
+                  label="Series (optional)"
+                  fullWidth
+                  value={episodeForm.seriesId}
+                  onChange={(e) => setEpisodeForm((p) => ({ ...p, seriesId: e.target.value }))}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {seriesList.map((s) => (
+                    <MenuItem key={s._id} value={s._id}>
+                      {s.title}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setEpisodeDialogOpen(false)} disabled={creatingEpisode}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleCreateEpisode}
+              disabled={creatingEpisode || !episodeForm.title.trim()}
+              startIcon={creatingEpisode ? <CircularProgress size={16} color="inherit" /> : <VideoLibraryIcon />}
+            >
+              {creatingEpisode ? 'Creating...' : 'Create Episode'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Tab label="Outline & Generate" />
@@ -243,12 +395,7 @@ export default function ScriptDetailPage() {
               <Alert
                 severity="error"
                 action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleGenerate}
-                  >
+                  <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={handleGenerate}>
                     Retry
                   </Button>
                 }

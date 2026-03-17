@@ -1,5 +1,6 @@
 import { Box } from '@mui/material';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { AppSidebar, SIDEBAR_WIDTH } from '@/components/shared-ui/AppSidebar';
 import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
@@ -23,13 +24,14 @@ export default async function AppLayout({
           bgcolor: 'background.default',
         }}
       >
-        {/* TODO: Add AppSidebar component here */}
+        <AppSidebar />
         <Box
           component="main"
           sx={{
             flex: 1,
             overflow: 'auto',
             p: 3,
+            ml: `${SIDEBAR_WIDTH}px`,
           }}
         >
           {children}
