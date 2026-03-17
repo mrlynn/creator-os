@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -13,10 +13,13 @@ import {
   MenuItem,
   CircularProgress,
   Stack,
+  Alert,
 } from '@mui/material';
 import Link from 'next/link';
 import { IdeaCard } from '@/components/ideas/IdeaCard';
 import AddIcon from '@mui/icons-material/Add';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { useToast } from '@/components/shared-ui/Toast';
 
 interface Idea {
   _id: string;
@@ -35,10 +38,12 @@ export default function IdeasPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [platform, setPlatform] = useState('');
+  const { toast } = useToast();
 
-  const fetchIdeas = async () => {
+  const fetchIdeas = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams();
       if (status) params.append('status', status);
       if (platform) params.append('platform', platform);
@@ -49,15 +54,17 @@ export default function IdeasPage() {
       const { data } = await response.json();
       setIdeas(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const msg = err instanceof Error ? err.message : 'An error occurred';
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [status, platform, toast]);
 
   useEffect(() => {
     fetchIdeas();
-  }, [status, platform]);
+  }, [fetchIdeas]);
 
   return (
     <Container maxWidth="lg">
@@ -110,9 +117,17 @@ export default function IdeasPage() {
         </Stack>
 
         {error && (
-          <Typography color="error" sx={{ mb: 2 }}>
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={fetchIdeas}>
+                Retry
+              </Button>
+            }
+          >
             {error}
-          </Typography>
+          </Alert>
         )}
 
         {loading ? (
