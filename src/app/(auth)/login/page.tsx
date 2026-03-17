@@ -80,11 +80,10 @@ export default function LoginPage() {
           Sign in with GitHub
         </Button>
 
-        {process.env.NODE_ENV !== 'production' && (
-          <>
+        <>
             <Divider sx={{ width: '100%' }}>
               <Typography variant="caption" color="textSecondary">
-                dev only
+                or use test account
               </Typography>
             </Divider>
 
@@ -124,8 +123,7 @@ export default function LoginPage() {
                 {isLoading ? 'Signing in...' : 'Sign in with credentials'}
               </Button>
             </Box>
-          </>
-        )}
+        </>
       </Box>
     </Container>
   );
