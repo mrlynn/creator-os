@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db/connection';
 import { getServerSession } from '@/lib/auth';
 import { Episode } from '@/lib/db/models/Episode';
 import { CreateEpisodeSchema } from '@/lib/db/schemas';
+import { autoTagEpisode } from '@/lib/ai/auto-tagger';
 import { Types } from 'mongoose';
 
 export async function POST(request: Request) {
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
       ideaId: new Types.ObjectId(ideaId),
       scriptId: new Types.ObjectId(scriptId),
     });
+
+    autoTagEpisode(episode._id.toString()).catch(console.error);
 
     return Response.json(episode, { status: 201 });
   } catch (error) {
