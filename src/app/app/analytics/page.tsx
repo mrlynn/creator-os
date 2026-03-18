@@ -29,6 +29,15 @@ interface Episode {
   title: string;
 }
 
+interface TagMetric {
+  tagId: string;
+  tagName: string;
+  totalViews: number;
+  totalLikes: number;
+  episodeCount: number;
+  avgEngagement: number;
+}
+
 interface AnalyticsSnapshot {
   _id: string;
   episodeId: string | { _id: string; title: string };
@@ -47,6 +56,7 @@ const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'overall'];
 export default function AnalyticsPage() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [snapshots, setSnapshots] = useState<AnalyticsSnapshot[]>([]);
+  const [heatmap, setHeatmap] = useState<TagMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -71,9 +81,10 @@ export default function AnalyticsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [epRes, snapRes] = await Promise.all([
+      const [epRes, snapRes, heatRes] = await Promise.all([
         fetch('/api/episodes?limit=100'),
         fetch('/api/analytics-snapshots'),
+        fetch('/api/analytics/heatmap'),
       ]);
 
       if (epRes.ok) {
@@ -83,6 +94,10 @@ export default function AnalyticsPage() {
       if (snapRes.ok) {
         const { data } = await snapRes.json();
         setSnapshots(data || []);
+      }
+      if (heatRes.ok) {
+        const { byTag } = await heatRes.json();
+        setHeatmap(byTag || []);
       }
     } catch (err) {
       setError('Failed to load data');
@@ -348,6 +363,48 @@ export default function AnalyticsPage() {
             </Stack>
           </form>
         </Paper>
+
+        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+          Topic Performance
+        </Typography>
+        {heatmap.length === 0 ? (
+          <Paper sx={{ p: 4, textAlign: 'center', mb: 3 }}>
+            <Typography color="textSecondary">
+              Add tags to episodes for topic insights.
+            </Typography>
+          </Paper>
+        ) : (
+          <TableContainer component={Paper} sx={{ mb: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Tag</TableCell>
+                  <TableCell align="right">Total Views</TableCell>
+                  <TableCell align="right">Total Likes</TableCell>
+                  <TableCell align="right">Episodes</TableCell>
+                  <TableCell align="right">Avg Engagement</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {heatmap.map((row) => (
+                  <TableRow key={row.tagId}>
+                    <TableCell>{row.tagName}</TableCell>
+                    <TableCell align="right">
+                      {row.totalViews.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="right">
+                      {row.totalLikes.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="right">{row.episodeCount}</TableCell>
+                    <TableCell align="right">
+                      {(row.avgEngagement * 100).toFixed(2)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
 
         <Typography variant="h6" gutterBottom>
           Snapshots
