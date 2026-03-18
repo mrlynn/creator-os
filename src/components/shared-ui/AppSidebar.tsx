@@ -20,6 +20,7 @@ import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CollectionsBookmarkIcon from '@mui/icons-material/CollectionsBookmark';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 
 const SIDEBAR_WIDTH = 220;
 
@@ -28,6 +29,7 @@ const navItems: { label: string; href: string; icon: React.ReactNode; disabled?:
   { label: 'Ideas', href: '/app/ideas', icon: <LightbulbIcon fontSize="small" /> },
   { label: 'Scripts', href: '/app/scripts', icon: <ArticleIcon fontSize="small" /> },
   { label: 'Pipeline', href: '/app/pipeline', icon: <ViewKanbanIcon fontSize="small" /> },
+  { label: 'Library', href: '/app/library', icon: <VideoLibraryIcon fontSize="small" /> },
   { label: 'Series', href: '/app/series', icon: <CollectionsBookmarkIcon fontSize="small" /> },
   { label: 'Tags', href: '/app/tags', icon: <LocalOfferIcon fontSize="small" /> },
   { label: 'Analytics', href: '/app/analytics', icon: <BarChartIcon fontSize="small" /> },

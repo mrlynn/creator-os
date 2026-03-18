@@ -66,10 +66,20 @@ export async function GET(request: Request) {
     if (seriesId && Types.ObjectId.isValid(seriesId)) {
       query.seriesId = new Types.ObjectId(seriesId);
     }
+    const tagsParam = searchParams.get('tags');
+    if (tagsParam) {
+      const tagIds = tagsParam.split(',').map((t) => t.trim()).filter(Boolean);
+      const validIds = tagIds.filter((tid) => Types.ObjectId.isValid(tid));
+      if (validIds.length > 0) {
+        query.tags = { $in: validIds.map((tid) => new Types.ObjectId(tid)) };
+      }
+    }
 
     const episodes = await Episode.find(query)
       .populate('ideaId')
       .populate('scriptId')
+      .populate('seriesId')
+      .populate('tags')
       .populate('publishingRecords')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)

@@ -20,6 +20,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const episode = await Episode.findById(params.id)
       .populate('ideaId')
       .populate('scriptId')
+      .populate('seriesId')
+      .populate('tags')
       .populate('publishingRecords');
 
     if (!episode) {
@@ -65,6 +67,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     })
       .populate('ideaId')
       .populate('scriptId')
+      .populate('seriesId')
+      .populate('tags')
       .populate('publishingRecords');
 
     if (!episode) {
