@@ -1,8 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Container, Typography, Box, CircularProgress, Stack } from '@mui/material';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Container,
+  Typography,
+  Box,
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
+  Alert,
+  Snackbar,
+} from '@mui/material';
 import Link from 'next/link';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { SearchField } from '@/components/shared-ui/SearchField';
+import { ListSkeleton } from '@/components/shared-ui/ListSkeleton';
 
 interface Script {
   _id: string;
@@ -15,31 +30,32 @@ interface Script {
 export default function ScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const fetchScripts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams();
+      if (status) params.append('status', status);
+      if (search.trim()) params.append('q', search.trim());
+      const response = await fetch(`/api/scripts?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch scripts');
+      const { data } = await response.json();
+      setScripts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load');
+    } finally {
+      setLoading(false);
+    }
+  }, [status, search]);
 
   useEffect(() => {
-    const fetchScripts = async () => {
-      try {
-        const response = await fetch('/api/scripts');
-        if (!response.ok) throw new Error('Failed to fetch scripts');
-        const { data } = await response.json();
-        setScripts(data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchScripts();
-  }, []);
-
-  if (loading) {
-    return (
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
+  }, [fetchScripts]);
 
   return (
     <Container maxWidth="lg">
@@ -53,21 +69,50 @@ export default function ScriptsPage() {
           </Typography>
         </Box>
 
-        {scripts.length === 0 ? (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+          <SearchField value={search} onChange={setSearch} placeholder="Search scripts..." />
+          <FormControl sx={{ minWidth: 150 }}>
+            <InputLabel>Status</InputLabel>
+            <Select value={status} onChange={(e) => setStatus(e.target.value)} label="Status">
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="outline">Outline</MenuItem>
+              <MenuItem value="draft">Draft</MenuItem>
+              <MenuItem value="final">Final</MenuItem>
+              <MenuItem value="archived">Archived</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <ListSkeleton count={6} variant="row" />
+        ) : scripts.length === 0 ? (
           <Typography color="textSecondary">No scripts yet. Create one from an idea.</Typography>
         ) : (
           <Stack spacing={2}>
             {scripts.map((script) => (
-              <Link key={script._id} href={`/app/scripts/${script._id}`} passHref>
+              <Box
+                key={script._id}
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
                 <Box
-                  component="a"
-                  sx={{
-                    p: 2,
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: '#f5f5f5' },
-                  }}
+                  component={Link}
+                  href={`/app/scripts/${script._id}`}
+                  sx={{ flex: 1, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
                 >
                   <Typography variant="h6">{script.title}</Typography>
                   <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
@@ -79,10 +124,37 @@ export default function ScriptsPage() {
                     </Typography>
                   </Stack>
                 </Box>
-              </Link>
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (!confirm('Archive this script?')) return;
+                    try {
+                      const res = await fetch(`/api/scripts/${script._id}`, { method: 'DELETE' });
+                      if (!res.ok) throw new Error('Failed to archive');
+                      setSuccessMessage('Script archived');
+                      fetchScripts();
+                    } catch {
+                      setError('Failed to archive script');
+                    }
+                  }}
+                  aria-label="Archive"
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
             ))}
           </Stack>
         )}
+
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={4000}
+          onClose={() => setSuccessMessage(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          message={successMessage}
+        />
       </Box>
     </Container>
   );

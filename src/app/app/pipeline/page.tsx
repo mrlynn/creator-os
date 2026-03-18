@@ -29,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import PublishIcon from '@mui/icons-material/Publish';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { SearchField } from '@/components/shared-ui/SearchField';
+import { ListSkeleton } from '@/components/shared-ui/ListSkeleton';
 
 const CalendarView = dynamic(
   () => import('@/components/pipeline/CalendarView'),
@@ -231,16 +232,6 @@ export default function PipelinePage() {
       setCreatingPub(false);
     }
   };
-
-  if (loading) {
-    return (
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
 
   return (
     <Container maxWidth="xl">
@@ -448,7 +439,9 @@ export default function PipelinePage() {
           </DialogActions>
         </Dialog>
 
-        {viewTab === 1 ? (
+        {loading && viewTab === 0 ? (
+          <ListSkeleton variant="kanban" />
+        ) : viewTab === 1 ? (
           <Paper sx={{ p: 2 }}>
             <Stack spacing={2}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>

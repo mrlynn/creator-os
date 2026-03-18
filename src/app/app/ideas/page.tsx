@@ -11,12 +11,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress,
   Stack,
   Alert,
 } from '@mui/material';
 import Link from 'next/link';
 import { IdeaCard } from '@/components/ideas/IdeaCard';
+import { SearchField } from '@/components/shared-ui/SearchField';
+import { ListSkeleton } from '@/components/shared-ui/ListSkeleton';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useToast } from '@/components/shared-ui/Toast';
@@ -38,6 +39,7 @@ export default function IdeasPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [platform, setPlatform] = useState('');
+  const [search, setSearch] = useState('');
   const { toast } = useToast();
 
   const fetchIdeas = useCallback(async () => {
@@ -47,6 +49,7 @@ export default function IdeasPage() {
       const params = new URLSearchParams();
       if (status) params.append('status', status);
       if (platform) params.append('platform', platform);
+      if (search.trim()) params.append('q', search.trim());
 
       const response = await fetch(`/api/ideas?${params}`);
       if (!response.ok) throw new Error('Failed to fetch ideas');
@@ -60,7 +63,7 @@ export default function IdeasPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, platform, toast]);
+  }, [status, platform, search, toast]);
 
   useEffect(() => {
     fetchIdeas();
@@ -73,18 +76,18 @@ export default function IdeasPage() {
           <Typography variant="h3" component="h1">
             Ideas
           </Typography>
-          <Link href="/app/ideas/new" passHref>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              component="a"
-            >
-              New Idea
-            </Button>
-          </Link>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            component={Link}
+            href="/app/ideas/new"
+          >
+            New Idea
+          </Button>
         </Box>
 
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+          <SearchField value={search} onChange={setSearch} placeholder="Search ideas..." />
           <FormControl sx={{ minWidth: 150 }}>
             <InputLabel>Status</InputLabel>
             <Select
@@ -97,6 +100,7 @@ export default function IdeasPage() {
               <MenuItem value="validated">Validated</MenuItem>
               <MenuItem value="scripted">Scripted</MenuItem>
               <MenuItem value="published">Published</MenuItem>
+              <MenuItem value="archived">Archived</MenuItem>
             </Select>
           </FormControl>
 
@@ -131,9 +135,7 @@ export default function IdeasPage() {
         )}
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
+          <ListSkeleton count={6} variant="card" />
         ) : ideas.length === 0 ? (
           <Typography variant="body1" color="textSecondary">
             No ideas found. Create your first idea!
@@ -151,6 +153,17 @@ export default function IdeasPage() {
                   audience={idea.audience}
                   format={idea.format}
                   viralityScore={idea.viralityScore}
+                  onDelete={async (id) => {
+                    if (!confirm('Archive this idea?')) return;
+                    try {
+                      const res = await fetch(`/api/ideas/${id}`, { method: 'DELETE' });
+                      if (!res.ok) throw new Error('Failed to archive');
+                      toast('Idea archived', 'success');
+                      fetchIdeas();
+                    } catch {
+                      toast('Failed to archive idea', 'error');
+                    }
+                  }}
                 />
               </Grid>
             ))}

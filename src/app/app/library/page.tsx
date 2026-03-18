@@ -11,7 +11,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress,
   Alert,
   Chip,
   Grid,
@@ -20,7 +19,11 @@ import {
   TextField,
 } from '@mui/material';
 import Link from 'next/link';
+import IconButton from '@mui/material/IconButton';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SemanticSearchBar from '@/components/library/SemanticSearchBar';
+import { SearchField } from '@/components/shared-ui/SearchField';
+import { ListSkeleton } from '@/components/shared-ui/ListSkeleton';
 
 interface Tag {
   _id: string;
@@ -67,6 +70,7 @@ export default function LibraryPage() {
     editingStatus: '',
     seriesId: '',
     tagIds: [] as string[],
+    search: '',
   });
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
@@ -82,6 +86,7 @@ export default function LibraryPage() {
       if (filters.editingStatus) params.append('editingStatus', filters.editingStatus);
       if (filters.seriesId) params.append('seriesId', filters.seriesId);
       if (filters.tagIds.length > 0) params.append('tags', filters.tagIds.join(','));
+      if (filters.search.trim()) params.append('q', filters.search.trim());
 
       const response = await fetch(`/api/episodes?${params}`);
       if (!response.ok) throw new Error('Failed to fetch episodes');
@@ -93,7 +98,7 @@ export default function LibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, filters.publishingStatus, filters.editingStatus, filters.seriesId, filters.tagIds.join(',')]);
+  }, [page, filters.publishingStatus, filters.editingStatus, filters.seriesId, filters.tagIds.join(','), filters.search]);
 
   useEffect(() => {
     fetchEpisodes();
@@ -125,16 +130,6 @@ export default function LibraryPage() {
     setPage(value);
   };
 
-  if (loading && episodes.length === 0) {
-    return (
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
-
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
@@ -155,7 +150,12 @@ export default function LibraryPage() {
           <SemanticSearchBar />
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+          <SearchField
+            value={filters.search}
+            onChange={(v) => setFilters((p) => ({ ...p, search: v }))}
+            placeholder="Search episodes..."
+          />
           <FormControl sx={{ minWidth: 150 }}>
             <InputLabel>Publishing Status</InputLabel>
             <Select
@@ -216,7 +216,9 @@ export default function LibraryPage() {
           />
         </Stack>
 
-        {episodes.length === 0 ? (
+        {loading ? (
+          <ListSkeleton count={6} variant="card" />
+        ) : episodes.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
             <Typography color="textSecondary">
               No episodes found. Create episodes from scripts to see them here.
@@ -230,19 +232,45 @@ export default function LibraryPage() {
                 const tags = ep.tags || [];
                 return (
                   <Grid item xs={12} sm={6} md={4} key={ep._id}>
-                    <Link href={`/app/library/${ep._id}`} style={{ textDecoration: 'none' }}>
-                      <Paper
-                        sx={{
-                          p: 2,
-                          height: '100%',
-                          cursor: 'pointer',
-                          '&:hover': { boxShadow: 2 },
-                        }}
-                      >
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                          {ep.title}
-                        </Typography>
-                        {ep.description && (
+                    <Paper
+                      sx={{
+                        p: 2,
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        '&:hover': { boxShadow: 2 },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                        <Box
+                          component={Link}
+                          href={`/app/library/${ep._id}`}
+                          sx={{ flex: 1, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+                        >
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            {ep.title}
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (!confirm('Archive this episode?')) return;
+                            try {
+                              const res = await fetch(`/api/episodes/${ep._id}`, { method: 'DELETE' });
+                              if (!res.ok) throw new Error('Failed to archive');
+                              fetchEpisodes();
+                            } catch {
+                              setError('Failed to archive episode');
+                            }
+                          }}
+                          aria-label="Archive"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      {ep.description && (
                           <Typography
                             variant="body2"
                             color="textSecondary"
@@ -257,8 +285,8 @@ export default function LibraryPage() {
                           >
                             {ep.description}
                           </Typography>
-                        )}
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ gap: 0.5 }}>
+                      )}
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ gap: 0.5 }}>
                           {ep.publishingStatus && (
                             <Chip
                               label={STATUS_LABELS[ep.publishingStatus] || ep.publishingStatus}
@@ -284,9 +312,8 @@ export default function LibraryPage() {
                               variant="outlined"
                             />
                           ))}
-                        </Stack>
-                      </Paper>
-                    </Link>
+                      </Stack>
+                    </Paper>
                   </Grid>
                 );
               })}
