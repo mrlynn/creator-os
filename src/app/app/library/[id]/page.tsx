@@ -413,6 +413,67 @@ export default function EpisodeDetailPage() {
             </Box>
           )}
 
+          <Box>
+            <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+              Export metadata
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={() => {
+                  const desc = episode.description || '';
+                  const tagList = (episode.tags || []).map((t) => t.name).join(', ');
+                  const text = [episode.title, desc, tagList ? `Tags: ${tagList}` : ''].filter(Boolean).join('\n\n');
+                  navigator.clipboard.writeText(text);
+                  setCopySnackbarMessage('Copied for YouTube');
+                  setCopySnackbar(true);
+                }}
+              >
+                Copy for YouTube
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={() => {
+                  const parts = [episode.title];
+                  if (episode.description) parts.push(episode.description);
+                  const hashtags = (episode.tags || []).map((t) => `#${t.name.replace(/\s/g, '')}`).join(' ');
+                  if (hashtags) parts.push(hashtags);
+                  const text = parts.join('. ');
+                  navigator.clipboard.writeText(text);
+                  setCopySnackbarMessage('Copied for TikTok');
+                  setCopySnackbar(true);
+                }}
+              >
+                Copy for TikTok
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={() => {
+                  const json = JSON.stringify(
+                    {
+                      title: episode.title,
+                      description: episode.description || '',
+                      tags: (episode.tags || []).map((t) => t.name),
+                    },
+                    null,
+                    2
+                  );
+                  navigator.clipboard.writeText(json);
+                  setCopySnackbarMessage('Copied as JSON');
+                  setCopySnackbar(true);
+                }}
+              >
+                Copy as JSON
+              </Button>
+            </Stack>
+          </Box>
+
           {scriptId && (
             <Box>
               <Typography variant="subtitle2" color="textSecondary" gutterBottom>
