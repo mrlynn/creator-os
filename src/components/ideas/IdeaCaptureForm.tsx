@@ -13,6 +13,7 @@ import {
   Alert,
 } from '@mui/material';
 import { CreateIdeaInput } from '@/lib/db/schemas';
+import { TagSelector } from '@/components/tags/TagSelector';
 
 export function IdeaCaptureForm() {
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,7 @@ export function IdeaCaptureForm() {
     platform: 'youtube',
     audience: 'beginner',
     format: 'tutorial',
+    tags: [],
   });
 
   const handleChange = (e: any) => {
@@ -58,6 +60,7 @@ export function IdeaCaptureForm() {
         platform: 'youtube',
         audience: 'beginner',
         format: 'tutorial',
+        tags: [],
       });
 
       // Reset success message after 2 seconds
@@ -141,6 +144,13 @@ export function IdeaCaptureForm() {
           <MenuItem value="other">Other</MenuItem>
         </Select>
       </FormControl>
+
+      <Box sx={{ mt: 2, mb: 1 }}>
+        <TagSelector
+          value={formData.tags || []}
+          onChange={(ids) => setFormData((p) => ({ ...p, tags: ids }))}
+        />
+      </Box>
 
       <Button
         type="submit"

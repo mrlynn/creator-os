@@ -3,7 +3,7 @@ import { z } from 'zod';
 // Tag Schemas
 export const CreateTagSchema = z.object({
   name: z.string().min(1).max(100),
-  slug: z.string().min(1).max(100),
+  slug: z.string().min(1).max(100).optional(),
   description: z.string().optional(),
   category: z.enum(['topic', 'platform', 'audience', 'format']),
 });
