@@ -11,6 +11,7 @@ export interface IContentIdea extends Document {
   viralityScore?: number;
   viralityReasoning?: string;
   notes?: string;
+  embedding?: number[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -58,6 +59,7 @@ const ContentIdeaSchema = new Schema<IContentIdea>(
     },
     viralityReasoning: String,
     notes: String,
+    embedding: { type: [Number], select: false },
   },
   { timestamps: true }
 );

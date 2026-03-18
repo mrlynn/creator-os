@@ -15,6 +15,7 @@ export interface IScript extends Document {
   wordCount: number;
   status: 'outline' | 'draft' | 'final' | 'archived';
   versions: IScriptVersion[];
+  embedding?: number[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +62,7 @@ const ScriptSchema = new Schema<IScript>(
       default: 'outline',
     },
     versions: [ScriptVersionSchema],
+    embedding: { type: [Number], select: false },
   },
   { timestamps: true }
 );

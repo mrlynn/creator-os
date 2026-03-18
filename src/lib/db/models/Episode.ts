@@ -12,6 +12,11 @@ export interface IEpisode extends Document {
   publishingStatus: 'draft' | 'scheduled' | 'published' | 'archived';
   tags: mongoose.Types.ObjectId[];
   publishingRecords: mongoose.Types.ObjectId[];
+  aiMetadata?: {
+    evergreenScore?: number;
+    evergreenReasoning?: string;
+  };
+  embedding?: number[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +66,11 @@ const EpisodeSchema = new Schema<IEpisode>(
         ref: 'PublishingRecord',
       },
     ],
+    aiMetadata: {
+      evergreenScore: Number,
+      evergreenReasoning: String,
+    },
+    embedding: { type: [Number], select: false },
   },
   { timestamps: true }
 );
