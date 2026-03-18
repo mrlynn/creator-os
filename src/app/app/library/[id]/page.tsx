@@ -17,12 +17,25 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  MenuItem,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  IconButton,
+  Snackbar,
 } from '@mui/material';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArticleIcon from '@mui/icons-material/Article';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 interface Tag {
   _id: string;
@@ -35,6 +48,17 @@ interface PublishingRecord {
   status: string;
   publishedUrl?: string;
   scheduledDate?: string;
+}
+
+interface ClipConcept {
+  clipNumber: number;
+  conceptTitle: string;
+  originalSection: string;
+  estimatedDuration: string;
+  newHook: string;
+  script: string;
+  onScreenTextSuggestions?: string[];
+  whyItStandsAlone: string;
 }
 
 interface Episode {
@@ -67,6 +91,38 @@ export default function EpisodeDetailPage() {
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [repurposeOpen, setRepurposeOpen] = useState(false);
+  const [repurposeLoading, setRepurposeLoading] = useState(false);
+  const [repurposeError, setRepurposeError] = useState<string | null>(null);
+  const [clips, setClips] = useState<ClipConcept[]>([]);
+  const [repurposePlatform, setRepurposePlatform] = useState('tiktok');
+  const [copySnackbar, setCopySnackbar] = useState(false);
+
+  const handleRepurpose = async () => {
+    setRepurposeLoading(true);
+    setRepurposeError(null);
+    setClips([]);
+    try {
+      const res = await fetch(`/api/episodes/${id}/repurpose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: repurposePlatform }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to repurpose');
+      setClips(data.clips || []);
+    } catch (err) {
+      setRepurposeError(err instanceof Error ? err.message : 'Failed to repurpose');
+    } finally {
+      setRepurposeLoading(false);
+    }
+  };
+
+  const copyClipContent = (clip: ClipConcept) => {
+    const text = `# ${clip.conceptTitle}\n\nHook: ${clip.newHook}\n\n${clip.script}`;
+    navigator.clipboard.writeText(text);
+    setCopySnackbar(true);
+  };
 
   useEffect(() => {
     const fetchEpisode = async () => {
@@ -98,11 +154,9 @@ export default function EpisodeDetailPage() {
     return (
       <Container>
         <Alert severity="error">Episode not found</Alert>
-        <Link href="/app/library" passHref>
-          <Button sx={{ mt: 2 }} component="a" startIcon={<ArrowBackIcon />}>
-            Back to Library
-          </Button>
-        </Link>
+        <Button sx={{ mt: 2 }} component={Link} href="/app/library" startIcon={<ArrowBackIcon />}>
+          Back to Library
+        </Button>
       </Container>
     );
   }
@@ -122,11 +176,9 @@ export default function EpisodeDetailPage() {
           </Alert>
         )}
 
-        <Link href="/app/library" passHref>
-          <Button startIcon={<ArrowBackIcon />} component="a" sx={{ mb: 2 }}>
-            Back to Library
-          </Button>
-        </Link>
+        <Button startIcon={<ArrowBackIcon />} component={Link} href="/app/library" sx={{ mb: 2 }}>
+          Back to Library
+        </Button>
 
         <Typography variant="h4" component="h1" gutterBottom>
           {episode.title}
@@ -160,11 +212,9 @@ export default function EpisodeDetailPage() {
               <Typography variant="subtitle2" color="textSecondary" gutterBottom>
                 Series
               </Typography>
-              <Link href={`/app/series/${series._id}`} passHref>
-                <Button component="a" size="small">
-                  {series.title}
-                </Button>
-              </Link>
+              <Button component={Link} href={`/app/series/${series._id}`} size="small">
+                {series.title}
+              </Button>
             </Box>
           )}
 
@@ -186,20 +236,108 @@ export default function EpisodeDetailPage() {
               <Typography variant="subtitle2" color="textSecondary" gutterBottom>
                 Script
               </Typography>
-              <Link href={`/app/scripts/${scriptId}`} passHref>
-                <Button startIcon={<ArticleIcon />} component="a" size="small">
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button startIcon={<ArticleIcon />} component={Link} href={`/app/scripts/${scriptId}`} size="small">
                   View Script
                 </Button>
-              </Link>
+                <Button
+                  startIcon={<AutoAwesomeIcon />}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    setRepurposeOpen(true);
+                    setRepurposeError(null);
+                    setClips([]);
+                  }}
+                >
+                  Repurpose
+                </Button>
+              </Stack>
             </Box>
           )}
 
-          <Link href="/app/analytics" passHref>
-            <Button startIcon={<BarChartIcon />} component="a" size="small">
-              Analytics
-            </Button>
-          </Link>
+          <Button startIcon={<BarChartIcon />} component={Link} href="/app/analytics" size="small">
+            Analytics
+          </Button>
         </Stack>
+
+        <Dialog open={repurposeOpen} onClose={() => setRepurposeOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Repurpose for Short-Form</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                select
+                label="Platform"
+                value={repurposePlatform}
+                onChange={(e) => setRepurposePlatform(e.target.value)}
+                size="small"
+                sx={{ maxWidth: 200 }}
+              >
+                <MenuItem value="tiktok">TikTok</MenuItem>
+                <MenuItem value="instagram">Instagram Reels</MenuItem>
+              </TextField>
+              <Button
+                variant="contained"
+                startIcon={repurposeLoading ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={handleRepurpose}
+                disabled={repurposeLoading}
+              >
+                {repurposeLoading ? 'Generating...' : 'Generate Clips'}
+              </Button>
+              {repurposeError && (
+                <Alert severity="error" onClose={() => setRepurposeError(null)}>
+                  {repurposeError}
+                </Alert>
+              )}
+              {clips.length > 0 && (
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">Clip Concepts</Typography>
+                  {clips.map((clip) => (
+                    <Accordion key={clip.clipNumber}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="subtitle2">
+                          {clip.clipNumber}. {clip.conceptTitle}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyClipContent(clip);
+                          }}
+                          sx={{ ml: 1 }}
+                          aria-label="Copy"
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={1}>
+                          <Typography variant="body2">
+                            <strong>Hook:</strong> {clip.newHook}
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {clip.script}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {clip.estimatedDuration} • {clip.whyItStandsAlone}
+                          </Typography>
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </DialogContent>
+        </Dialog>
+
+        <Snackbar
+          open={copySnackbar}
+          autoHideDuration={2000}
+          onClose={() => setCopySnackbar(false)}
+          message="Copied to clipboard"
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
 
         {episode.publishingRecords && episode.publishingRecords.length > 0 && (
           <Paper sx={{ p: 2 }}>
