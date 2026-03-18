@@ -10,6 +10,17 @@ export const CreateTagSchema = z.object({
 
 export const UpdateTagSchema = CreateTagSchema.partial();
 
+// InstructionProfile Schemas
+export const CreateInstructionProfileSchema = z.object({
+  name: z.string().min(1).max(100),
+  instructionText: z.string().min(1).max(2000),
+  applicableOperations: z.array(z.string()).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+export const UpdateInstructionProfileSchema =
+  CreateInstructionProfileSchema.partial();
+
 // ContentIdea Schemas
 export const CreateIdeaSchema = z.object({
   title: z.string().min(1).max(255),
@@ -139,6 +150,12 @@ export const UpdateSeriesSchema = CreateSeriesSchema.partial().extend({
 // Export types
 export type CreateTagInput = z.infer<typeof CreateTagSchema>;
 export type UpdateTagInput = z.infer<typeof UpdateTagSchema>;
+export type CreateInstructionProfileInput = z.infer<
+  typeof CreateInstructionProfileSchema
+>;
+export type UpdateInstructionProfileInput = z.infer<
+  typeof UpdateInstructionProfileSchema
+>;
 export type CreateIdeaInput = z.infer<typeof CreateIdeaSchema>;
 export type UpdateIdeaInput = z.infer<typeof UpdateIdeaSchema>;
 export type CreateScriptInput = z.infer<typeof CreateScriptSchema>;
