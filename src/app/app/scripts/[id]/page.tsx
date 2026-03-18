@@ -204,6 +204,27 @@ export default function ScriptDetailPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleTitleBlur = async () => {
+    if (!script || formData.title === script.title) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/scripts/${scriptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, title: formData.title || 'Untitled Script' }),
+      });
+      if (!response.ok) throw new Error('Failed to save');
+      const updated = await response.json();
+      setScript(updated);
+      setSuccessMessage('Title saved');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save title');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -357,6 +378,42 @@ export default function ScriptDetailPage() {
     }
   };
 
+  const keyboardRef = useRef({
+    handleSave: () => {},
+    handleGenerate: () => {},
+    saving: false,
+    generating: false,
+    script: null as Script | null,
+    tabValue: 0,
+    formData: {} as Partial<Script>,
+  });
+  keyboardRef.current = {
+    handleSave,
+    handleGenerate,
+    saving,
+    generating,
+    script,
+    tabValue,
+    formData,
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const { handleSave, handleGenerate, saving, generating, script, tabValue, formData } =
+        keyboardRef.current;
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (!saving && script) handleSave();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (tabValue === 0 && formData?.outline?.trim() && !generating) handleGenerate();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const handleSaveHooks = async (platform: 'youtube' | 'tiktok') => {
     const hooksField = platform === 'youtube' ? 'youtubeHooks' : 'tiktokHooks';
     const hooksValue = platform === 'youtube' ? formData.youtubeHooks : formData.tiktokHooks;
@@ -408,10 +465,26 @@ export default function ScriptDetailPage() {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-          <Typography variant="h3" component="h1">
-            {script.title}
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 2 }}>
+          <TextField
+            name="title"
+            value={formData.title || ''}
+            onChange={handleChange}
+            onBlur={handleTitleBlur}
+            placeholder="Untitled Script"
+            variant="standard"
+            fullWidth
+            sx={{
+              '& .MuiInput-input': {
+                fontSize: '2rem',
+                fontWeight: 700,
+                lineHeight: 1.2,
+              },
+              '& .MuiInput-underline:before': { borderBottom: '1px solid transparent' },
+              '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: '1px solid rgba(0,0,0,0.42)' },
+              '& .MuiInput-underline:after': { borderBottom: '2px solid' },
+            }}
+          />
           <Button
             variant="outlined"
             startIcon={<VideoLibraryIcon />}
@@ -646,17 +719,21 @@ export default function ScriptDetailPage() {
             )}
 
             {!script || script.wordCount === 0 ? (
-              <Button
-                variant="contained"
-                size="large"
-                disabled={generatingHooks}
-                startIcon={generatingHooks ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighIcon />}
-                onClick={handleGenerateHooks}
-              >
-                {generatingHooks ? 'Generating...' : 'Generate Hooks with AI'}
-              </Button>
+              <Typography variant="body2" color="text.secondary">
+                Please generate a script first (Outline &amp; Generate tab) before creating hooks.
+              </Typography>
             ) : (
               <Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  disabled={generatingHooks}
+                  startIcon={generatingHooks ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighIcon />}
+                  onClick={handleGenerateHooks}
+                  sx={{ mb: 2 }}
+                >
+                  {generatingHooks ? 'Generating...' : 'Generate Hooks with AI'}
+                </Button>
                 <Tabs
                   value={hookTabValue}
                   onChange={(_, v) => setHookTabValue(v)}
