@@ -37,7 +37,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const aiResult = await generateScriptFromOutline(
       validationResult.data.outline,
       validationResult.data.audience || 'beginner',
-      validationResult.data.profileId
+      validationResult.data.profileId,
+      {
+        includeRag: validationResult.data.includeRag,
+        ragLimit: validationResult.data.ragLimit,
+      }
     );
 
     if (!aiResult.success) {

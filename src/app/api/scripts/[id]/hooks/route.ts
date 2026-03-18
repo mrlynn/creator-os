@@ -37,7 +37,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const hooksResult = await generateHooks(
       validationResult.data.scriptContent,
       validationResult.data.audienceLevel || 'beginner',
-      validationResult.data.profileId
+      validationResult.data.profileId,
+      {
+        includeRag: validationResult.data.includeRag,
+        ragLimit: validationResult.data.ragLimit,
+      }
     );
 
     if (!hooksResult.success) {

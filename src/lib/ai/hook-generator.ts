@@ -1,11 +1,13 @@
 import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
 import { getProfileInstruction } from './instruction-profile';
+import { getRagContext } from './rag-retrieval';
 
 export async function generateHooks(
   scriptContent: string,
   audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
-  profileId?: string | null
+  profileId?: string | null,
+  options?: { includeRag?: boolean; ragLimit?: number }
 ) {
   const client = getOpenAIClient();
   const startTime = Date.now();
@@ -14,20 +16,29 @@ export async function generateHooks(
     const profileInstruction = profileId
       ? await getProfileInstruction(profileId)
       : '';
+    const ragContext =
+      options?.includeRag === true
+        ? await getRagContext(
+            scriptContent.slice(0, 200),
+            ['idea', 'episode', 'script'],
+            options.ragLimit ?? 3
+          )
+        : '';
+    const ragSuffix = ragContext ? `\n\n${ragContext}` : '';
 
     const youtubePrompt = `Based on this script content, generate 5 compelling YouTube video hooks (opening lines that make viewers click and watch):
 
 ${scriptContent}
 
 Audience Level: ${audienceLevel}
-Return exactly 5 hooks, one per line, numbered 1-5.`;
+Return exactly 5 hooks, one per line, numbered 1-5.${ragSuffix}`;
 
     const tiktokPrompt = `Based on this script content, generate 5 punchy, attention-grabbing TikTok hooks (first 3 seconds that stop scrolling):
 
 ${scriptContent}
 
 Audience Level: ${audienceLevel}
-Return exactly 5 hooks, one per line, numbered 1-5. Keep each under 20 words.`;
+Return exactly 5 hooks, one per line, numbered 1-5. Keep each under 20 words.${ragSuffix}`;
 
     const youtubeMessages = profileInstruction
       ? [

@@ -61,12 +61,15 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const platform = (body.platform as string) || 'tiktok';
     const profileId = (body.profileId as string) || undefined;
+    const includeRag = body.includeRag === true;
+    const ragLimit = typeof body.ragLimit === 'number' ? body.ragLimit : undefined;
 
     const result = await generateClipConcepts(
       scriptText,
       episode.title,
       platform,
-      profileId
+      profileId,
+      { includeRag, ragLimit }
     );
 
     if (!result.success) {

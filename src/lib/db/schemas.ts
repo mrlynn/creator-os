@@ -58,12 +58,16 @@ export const GenerateScriptSchema = z.object({
   outline: z.string().min(1),
   audience: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
   profileId: z.string().optional(),
+  includeRag: z.boolean().optional(),
+  ragLimit: z.number().min(1).max(10).optional(),
 });
 
 export const GenerateHooksSchema = z.object({
   scriptContent: z.string().min(1),
   audienceLevel: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
   profileId: z.string().optional(),
+  includeRag: z.boolean().optional(),
+  ragLimit: z.number().min(1).max(10).optional(),
 });
 
 export const RewriteScriptSchema = z.object({

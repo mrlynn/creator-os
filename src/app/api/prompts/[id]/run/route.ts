@@ -4,6 +4,7 @@ import { Prompt } from '@/lib/db/models/Prompt';
 import { getOpenAIClient } from '@/lib/ai/openai-client';
 import { logAiUsage } from '@/lib/ai/usage-logger';
 import { getProfileInstruction } from '@/lib/ai/instruction-profile';
+import { getRagContext } from '@/lib/ai/rag-retrieval';
 import { Types } from 'mongoose';
 
 export async function POST(
@@ -30,6 +31,8 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const variables = (body.variables as Record<string, string>) || {};
     const profileId = (body.profileId as string) || undefined;
+    const includeRag = body.includeRag === true;
+    const ragLimit = typeof body.ragLimit === 'number' ? body.ragLimit : 3;
 
     const filledTemplate = prompt.template.replace(
       /\{\{(\w+)\}\}/g,
@@ -39,12 +42,23 @@ export async function POST(
     const profileInstruction = profileId
       ? await getProfileInstruction(profileId)
       : '';
+    const ragContext =
+      includeRag
+        ? await getRagContext(
+            filledTemplate.slice(0, 200),
+            ['idea', 'episode', 'script'],
+            ragLimit
+          )
+        : '';
+    const userContent = ragContext
+      ? `${filledTemplate}\n\n${ragContext}`
+      : filledTemplate;
     const messages = profileInstruction
       ? [
           { role: 'system' as const, content: profileInstruction },
-          { role: 'user' as const, content: filledTemplate },
+          { role: 'user' as const, content: userContent },
         ]
-      : [{ role: 'user' as const, content: filledTemplate }];
+      : [{ role: 'user' as const, content: userContent }];
 
     const client = getOpenAIClient();
     const start = Date.now();

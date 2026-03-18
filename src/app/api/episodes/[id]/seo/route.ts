@@ -63,6 +63,8 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const profileId = (body.profileId as string) || undefined;
+    const includeRag = body.includeRag === true;
+    const ragLimit = typeof body.ragLimit === 'number' ? body.ragLimit : undefined;
 
     const result = await generateSeo(
       {
@@ -71,7 +73,8 @@ export async function POST(
         scriptText: contentForSeo,
         tags: tagNames,
       },
-      profileId
+      profileId,
+      { includeRag, ragLimit }
     );
 
     if (!result.success) {

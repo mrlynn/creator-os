@@ -1,17 +1,27 @@
 import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
 import { getProfileInstruction } from './instruction-profile';
+import { getRagContext } from './rag-retrieval';
 
 export async function generateScriptFromOutline(
   outline: string,
   audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
-  profileId?: string | null
+  profileId?: string | null,
+  options?: { includeRag?: boolean; ragLimit?: number }
 ) {
   const client = getOpenAIClient();
   const startTime = Date.now();
 
   try {
     const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
+    const ragContext =
+      options?.includeRag === true
+        ? await getRagContext(
+            outline.slice(0, 200),
+            ['idea', 'episode', 'script'],
+            options.ragLimit ?? 3
+          )
+        : '';
     const baseSystemPrompt = `You are an expert content creator and scriptwriter. Create engaging, structured scripts for developers.
 
 The script should have these sections separated by clear markers:
@@ -25,7 +35,7 @@ The script should have these sections separated by clear markers:
 Audience Level: ${audienceLevel}
 - Beginner: Explain concepts clearly, assume minimal technical knowledge
 - Intermediate: Balance detail with clarity, skip basics
-- Advanced: Dive deep into nuances and edge cases`;
+- Advanced: Dive deep into nuances and edge cases${ragContext ? `\n\n${ragContext}` : ''}`;
     const systemPrompt = profilePrefix
       ? `${profilePrefix}\n\n${baseSystemPrompt}`
       : baseSystemPrompt;
