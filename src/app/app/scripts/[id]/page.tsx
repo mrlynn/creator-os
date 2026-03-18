@@ -31,8 +31,15 @@ import SaveIcon from '@mui/icons-material/Save';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import { ScriptVersionDiff } from '@/components/scripts/ScriptVersionDiff';
 
 type AudienceLevel = 'beginner' | 'advanced';
+
+interface ScriptVersion {
+  version: number;
+  content: string;
+  createdAt: Date | string;
+}
 
 interface Script {
   _id: string;
@@ -49,6 +56,7 @@ interface Script {
   tiktokHooks?: string[];
   status: string;
   wordCount: number;
+  versions?: ScriptVersion[];
 }
 
 interface Series {
@@ -487,6 +495,7 @@ export default function ScriptDetailPage() {
           <Tab label="Outline & Generate" />
           <Tab label="Script Sections" />
           <Tab label="Hooks" />
+          <Tab label="Version History" />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -729,6 +738,10 @@ export default function ScriptDetailPage() {
               </Box>
             )}
           </Stack>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <ScriptVersionDiff versions={script?.versions || []} />
         </TabPanel>
       </Box>
     </Container>
