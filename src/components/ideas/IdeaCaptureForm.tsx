@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Box,
   Button,
@@ -11,11 +11,14 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
+  Stack,
 } from '@mui/material';
 import { CreateIdeaInput } from '@/lib/db/schemas';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { VoiceInputButton } from '@/components/ideas/VoiceInputButton';
 
 export function IdeaCaptureForm() {
+  const descriptionInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -34,6 +37,14 @@ export function IdeaCaptureForm() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleVoiceResult = (text: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      description: prev.description ? `${prev.description} ${text}` : text,
+    }));
+    setTimeout(() => descriptionInputRef.current?.focus(), 100);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,17 +98,26 @@ export function IdeaCaptureForm() {
         margin="normal"
       />
 
-      <TextField
-        fullWidth
-        label="Description"
-        name="description"
-        value={formData.description}
-        onChange={handleChange}
-        required
-        multiline
-        rows={4}
-        margin="normal"
-      />
+      <Box sx={{ mt: 2, mb: 0 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+          <Box component="label" htmlFor="description" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+            Description *
+          </Box>
+          <VoiceInputButton onResult={handleVoiceResult} disabled={loading} />
+        </Stack>
+        <TextField
+          fullWidth
+          id="description"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          required
+          multiline
+          rows={4}
+          placeholder="Describe your idea..."
+          inputRef={descriptionInputRef}
+        />
+      </Box>
 
       <FormControl fullWidth margin="normal">
         <InputLabel>Platform</InputLabel>
