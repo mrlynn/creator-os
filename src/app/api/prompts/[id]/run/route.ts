@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth';
 import { Prompt } from '@/lib/db/models/Prompt';
 import { getOpenAIClient } from '@/lib/ai/openai-client';
 import { logAiUsage } from '@/lib/ai/usage-logger';
+import { getProfileInstruction } from '@/lib/ai/instruction-profile';
 import { Types } from 'mongoose';
 
 export async function POST(
@@ -28,18 +29,29 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const variables = (body.variables as Record<string, string>) || {};
+    const profileId = (body.profileId as string) || undefined;
 
     const filledTemplate = prompt.template.replace(
       /\{\{(\w+)\}\}/g,
       (_match: string, key: string) => variables[key] ?? ''
     );
 
+    const profileInstruction = profileId
+      ? await getProfileInstruction(profileId)
+      : '';
+    const messages = profileInstruction
+      ? [
+          { role: 'system' as const, content: profileInstruction },
+          { role: 'user' as const, content: filledTemplate },
+        ]
+      : [{ role: 'user' as const, content: filledTemplate }];
+
     const client = getOpenAIClient();
     const start = Date.now();
 
     const res = await client.chat.completions.create({
       model: 'gpt-4-turbo',
-      messages: [{ role: 'user', content: filledTemplate }],
+      messages,
       temperature: 0.7,
       max_tokens: 4000,
     });

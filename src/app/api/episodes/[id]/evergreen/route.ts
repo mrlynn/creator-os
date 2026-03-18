@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { getServerSession } from '@/lib/auth';
 import { Episode } from '@/lib/db/models/Episode';
-import { generateClipConcepts } from '@/lib/ai/repurposing-engine';
+import { scoreEvergreen } from '@/lib/ai/evergreen-scorer';
 import { Types } from 'mongoose';
 
 export async function POST(
@@ -34,38 +34,27 @@ export async function POST(
       outro?: string;
     } | null;
 
-    if (!script) {
-      return Response.json(
-        { error: 'Episode has no script' },
-        { status: 400 }
-      );
-    }
-
-    const sections = [
-      script.hook,
-      script.problem,
-      script.solution,
-      script.demo,
-      script.cta,
-      script.outro,
-    ].filter(Boolean) as string[];
-
-    const scriptText = sections.join('\n\n');
-    if (!scriptText.trim()) {
-      return Response.json(
-        { error: 'Script has no content' },
-        { status: 400 }
-      );
-    }
+    const sections = script
+      ? [
+          script.hook,
+          script.problem,
+          script.solution,
+          script.demo,
+          script.cta,
+          script.outro,
+        ].filter(Boolean) as string[]
+      : [];
+    const scriptText = sections.join('\n\n').slice(0, 500);
 
     const body = await request.json().catch(() => ({}));
-    const platform = (body.platform as string) || 'tiktok';
     const profileId = (body.profileId as string) || undefined;
 
-    const result = await generateClipConcepts(
-      scriptText,
-      episode.title,
-      platform,
+    const result = await scoreEvergreen(
+      {
+        _id: episode._id.toString(),
+        title: episode.title,
+        scriptText: scriptText || undefined,
+      },
       profileId
     );
 
@@ -76,12 +65,22 @@ export async function POST(
       );
     }
 
-    return Response.json({ clips: result.clips });
+    await Episode.findByIdAndUpdate(params.id, {
+      $set: {
+        'aiMetadata.evergreenScore': result.evergreenScore,
+        'aiMetadata.evergreenReasoning': result.reasoning,
+      },
+    });
+
+    return Response.json({
+      evergreenScore: result.evergreenScore,
+      reasoning: result.reasoning,
+    });
   } catch (error) {
-    console.error('Error repurposing episode:', error);
+    console.error('Error scoring evergreen:', error);
     return Response.json(
       {
-        error: 'Failed to repurpose episode',
+        error: 'Failed to score evergreen',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

@@ -3,32 +3,40 @@ import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
 import { getProfileInstruction } from './instruction-profile';
 
-const ViralityResponseSchema = z.object({
-  viralityScore: z.number().min(0).max(100),
-  viralityReasoning: z.string(),
+const EvergreenResponseSchema = z.object({
+  evergreenScore: z.number().min(0).max(100),
+  reasoning: z.string(),
 });
 
-export async function scoreVirality(
-  idea: {
+export async function scoreEvergreen(
+  episode: {
     _id: string;
     title: string;
-    description: string;
-    platform: string;
-    audience: string;
-    format: string;
+    scriptText?: string;
   },
   profileId?: string | null
 ): Promise<
-  | { success: true; viralityScore: number; viralityReasoning: string }
+  | { success: true; evergreenScore: number; reasoning: string }
   | { success: false; error: string }
 > {
   const client = getOpenAIClient();
   const start = Date.now();
 
+  const inputText = [
+    episode.title,
+    episode.scriptText ? episode.scriptText.slice(0, 500) : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  if (!inputText.trim()) {
+    return { success: false, error: 'Episode has no content to score' };
+  }
+
   try {
     const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
     const baseSystem =
-      'You are an expert at assessing content virality for social media. Score content ideas 0-100 for virality potential. Consider: hook strength, shareability, emotional resonance, platform fit, and trend alignment. Return valid JSON only: { "viralityScore": number, "viralityReasoning": string }.';
+      'You are a content strategist. Rate content longevity 0–100 (evergreen score). Consider: topic stability (does it date quickly?), search intent (evergreen queries?), tutorial vs news. Return valid JSON only: { "evergreenScore": number, "reasoning": string }.';
     const systemContent = profilePrefix
       ? `${profilePrefix}\n\n${baseSystem}`
       : baseSystem;
@@ -40,16 +48,7 @@ export async function scoreVirality(
           role: 'system',
           content: systemContent,
         },
-        {
-          role: 'user',
-          content: JSON.stringify({
-            title: idea.title,
-            description: idea.description,
-            platform: idea.platform,
-            audience: idea.audience,
-            format: idea.format,
-          }),
-        },
+        { role: 'user', content: inputText },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.3,
@@ -57,33 +56,34 @@ export async function scoreVirality(
     });
 
     const text = res.choices[0].message?.content || '{}';
-    const parsed = JSON.parse(text);
-    const validated = ViralityResponseSchema.parse(parsed);
+    const stripped = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(stripped);
+    const validated = EvergreenResponseSchema.parse(parsed);
 
     logAiUsage({
-      category: 'virality-scoring',
+      category: 'evergreen-scoring',
       tokensUsed: res.usage?.total_tokens || 0,
       durationMs: Date.now() - start,
       success: true,
-      relatedDocumentId: idea._id,
-      relatedDocumentType: 'ContentIdea',
+      relatedDocumentId: episode._id,
+      relatedDocumentType: 'Episode',
     }).catch(console.error);
 
     return {
       success: true,
-      viralityScore: validated.viralityScore,
-      viralityReasoning: validated.viralityReasoning,
+      evergreenScore: validated.evergreenScore,
+      reasoning: validated.reasoning,
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     logAiUsage({
-      category: 'virality-scoring',
+      category: 'evergreen-scoring',
       tokensUsed: 0,
       durationMs: Date.now() - start,
       success: false,
       errorMessage,
-      relatedDocumentId: idea._id,
-      relatedDocumentType: 'ContentIdea',
+      relatedDocumentId: episode._id,
+      relatedDocumentType: 'Episode',
     }).catch(console.error);
 
     return { success: false, error: errorMessage };

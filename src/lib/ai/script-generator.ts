@@ -1,15 +1,18 @@
 import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
+import { getProfileInstruction } from './instruction-profile';
 
 export async function generateScriptFromOutline(
   outline: string,
-  audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
+  audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
+  profileId?: string | null
 ) {
   const client = getOpenAIClient();
   const startTime = Date.now();
 
   try {
-    const systemPrompt = `You are an expert content creator and scriptwriter. Create engaging, structured scripts for developers.
+    const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
+    const baseSystemPrompt = `You are an expert content creator and scriptwriter. Create engaging, structured scripts for developers.
 
 The script should have these sections separated by clear markers:
 - Hook: A compelling opening that grabs attention (1-2 sentences)
@@ -23,6 +26,9 @@ Audience Level: ${audienceLevel}
 - Beginner: Explain concepts clearly, assume minimal technical knowledge
 - Intermediate: Balance detail with clarity, skip basics
 - Advanced: Dive deep into nuances and edge cases`;
+    const systemPrompt = profilePrefix
+      ? `${profilePrefix}\n\n${baseSystemPrompt}`
+      : baseSystemPrompt;
 
     const userPrompt = `Create a complete script based on this outline:
 

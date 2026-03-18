@@ -23,19 +23,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const { ideaId, scriptId } = validationResult.data;
+    const { ideaId, scriptId, profileId, ...rest } = validationResult.data;
 
     if (!Types.ObjectId.isValid(ideaId) || !Types.ObjectId.isValid(scriptId)) {
       return Response.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
     const episode = await Episode.create({
-      ...validationResult.data,
+      ...rest,
       ideaId: new Types.ObjectId(ideaId),
       scriptId: new Types.ObjectId(scriptId),
     });
 
-    autoTagEpisode(episode._id.toString()).catch(console.error);
+    autoTagEpisode(episode._id.toString(), profileId).catch(console.error);
 
     return Response.json(episode, { status: 201 });
   } catch (error) {

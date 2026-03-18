@@ -1,7 +1,7 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { getServerSession } from '@/lib/auth';
 import { Episode } from '@/lib/db/models/Episode';
-import { generateClipConcepts } from '@/lib/ai/repurposing-engine';
+import { generateSeo } from '@/lib/ai/seo-generator';
 import { Types } from 'mongoose';
 
 export async function POST(
@@ -20,7 +20,9 @@ export async function POST(
       return Response.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    const episode = await Episode.findById(params.id).populate('scriptId');
+    const episode = await Episode.findById(params.id)
+      .populate('scriptId')
+      .populate('tags');
     if (!episode) {
       return Response.json({ error: 'Episode not found' }, { status: 404 });
     }
@@ -34,38 +36,41 @@ export async function POST(
       outro?: string;
     } | null;
 
-    if (!script) {
-      return Response.json(
-        { error: 'Episode has no script' },
-        { status: 400 }
-      );
-    }
-
-    const sections = [
-      script.hook,
-      script.problem,
-      script.solution,
-      script.demo,
-      script.cta,
-      script.outro,
-    ].filter(Boolean) as string[];
-
+    const sections = script
+      ? [
+          script.hook,
+          script.problem,
+          script.solution,
+          script.demo,
+          script.cta,
+          script.outro,
+        ].filter(Boolean) as string[]
+      : [];
     const scriptText = sections.join('\n\n');
-    if (!scriptText.trim()) {
+    const contentForSeo = scriptText.trim() || (episode.description || '');
+
+    const tags = episode.tags as { name?: string }[] | undefined;
+    const tagNames = Array.isArray(tags)
+      ? tags.map((t) => (typeof t === 'object' && t?.name ? t.name : String(t)))
+      : [];
+
+    if (!episode.title && !contentForSeo) {
       return Response.json(
-        { error: 'Script has no content' },
+        { error: 'Episode has no content' },
         { status: 400 }
       );
     }
 
     const body = await request.json().catch(() => ({}));
-    const platform = (body.platform as string) || 'tiktok';
     const profileId = (body.profileId as string) || undefined;
 
-    const result = await generateClipConcepts(
-      scriptText,
-      episode.title,
-      platform,
+    const result = await generateSeo(
+      {
+        _id: episode._id.toString(),
+        title: episode.title,
+        scriptText: contentForSeo,
+        tags: tagNames,
+      },
       profileId
     );
 
@@ -76,12 +81,12 @@ export async function POST(
       );
     }
 
-    return Response.json({ clips: result.clips });
+    return Response.json(result.data);
   } catch (error) {
-    console.error('Error repurposing episode:', error);
+    console.error('Error generating SEO:', error);
     return Response.json(
       {
-        error: 'Failed to repurpose episode',
+        error: 'Failed to generate SEO',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

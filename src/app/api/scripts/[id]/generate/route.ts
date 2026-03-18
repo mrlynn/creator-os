@@ -36,7 +36,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Call AI to generate script
     const aiResult = await generateScriptFromOutline(
       validationResult.data.outline,
-      validationResult.data.audience || 'beginner'
+      validationResult.data.audience || 'beginner',
+      validationResult.data.profileId
     );
 
     if (!aiResult.success) {

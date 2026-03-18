@@ -4,7 +4,7 @@ import { ContentIdea } from '@/lib/db/models/ContentIdea';
 import { scoreVirality } from '@/lib/ai/virality-scorer';
 import { Types } from 'mongoose';
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession();
     if (!session?.user?.email) {
@@ -22,14 +22,20 @@ export async function POST(_request: Request, { params }: { params: { id: string
       return Response.json({ error: 'Idea not found' }, { status: 404 });
     }
 
-    const result = await scoreVirality({
-      _id: idea._id.toString(),
-      title: idea.title,
-      description: idea.description,
-      platform: idea.platform,
-      audience: idea.audience,
-      format: idea.format,
-    });
+    const body = await request.json().catch(() => ({}));
+    const profileId = (body.profileId as string) || undefined;
+
+    const result = await scoreVirality(
+      {
+        _id: idea._id.toString(),
+        title: idea.title,
+        description: idea.description,
+        platform: idea.platform,
+        audience: idea.audience,
+        format: idea.format,
+      },
+      profileId
+    );
 
     if (!result.success) {
       return Response.json(

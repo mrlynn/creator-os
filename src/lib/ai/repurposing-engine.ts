@@ -1,5 +1,6 @@
 import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
+import { getProfileInstruction } from './instruction-profile';
 
 const MAX_SCRIPT_CHARS = 4000;
 
@@ -17,7 +18,8 @@ export interface ClipConcept {
 export async function generateClipConcepts(
   script: string,
   title: string,
-  platform: string = 'tiktok'
+  platform: string = 'tiktok',
+  profileId?: string | null
 ): Promise<
   | { success: true; clips: ClipConcept[] }
   | { success: false; error: string }
@@ -30,7 +32,8 @@ export async function generateClipConcepts(
       ? script.slice(0, MAX_SCRIPT_CHARS) + '...[truncated]'
       : script;
 
-  const systemPrompt = `You are a content repurposing specialist for developer education channels.
+  const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
+  const baseSystemPrompt = `You are a content repurposing specialist for developer education channels.
 Your task is to identify 4–6 self-contained moments from a YouTube script that can stand alone as short-form clips for ${platform}.
 
 Return a JSON object with a "clips" array. Each clip must have:
@@ -44,6 +47,9 @@ Return a JSON object with a "clips" array. Each clip must have:
 - whyItStandsAlone: string
 
 Return only valid JSON, no markdown.`;
+  const systemPrompt = profilePrefix
+    ? `${profilePrefix}\n\n${baseSystemPrompt}`
+    : baseSystemPrompt;
 
   const userContent = `Original YouTube script for "${title}":
 ---

@@ -3,11 +3,15 @@ import { Episode } from '@/lib/db/models/Episode';
 import { Tag } from '@/lib/db/models/Tag';
 import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
+import { getProfileInstruction } from './instruction-profile';
 import { Types } from 'mongoose';
 
 const MAX_TEXT_CHARS = 500;
 
-export async function autoTagEpisode(episodeId: string): Promise<void> {
+export async function autoTagEpisode(
+  episodeId: string,
+  profileId?: string | null
+): Promise<void> {
   const start = Date.now();
 
   try {
@@ -45,14 +49,20 @@ export async function autoTagEpisode(episodeId: string): Promise<void> {
 
     if (!text.trim()) return;
 
+    const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
+    const baseSystem =
+      'Classify this content. Return a JSON object with a "tags" array of tag names (topics, technologies, audience level). Use lowercase, hyphenated names. Example: { "tags": ["mongodb", "rag", "beginner"] }';
+    const systemContent = profilePrefix
+      ? `${profilePrefix}\n\n${baseSystem}`
+      : baseSystem;
+
     const client = getOpenAIClient();
     const res = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [
         {
           role: 'system',
-          content:
-            'Classify this content. Return a JSON object with a "tags" array of tag names (topics, technologies, audience level). Use lowercase, hyphenated names. Example: { "tags": ["mongodb", "rag", "beginner"] }',
+          content: systemContent,
         },
         { role: 'user', content: text },
       ],

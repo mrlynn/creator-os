@@ -1,14 +1,20 @@
 import { getOpenAIClient } from './openai-client';
 import { logAiUsage } from './usage-logger';
+import { getProfileInstruction } from './instruction-profile';
 
 export async function generateHooks(
   scriptContent: string,
-  audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
+  audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
+  profileId?: string | null
 ) {
   const client = getOpenAIClient();
   const startTime = Date.now();
 
   try {
+    const profileInstruction = profileId
+      ? await getProfileInstruction(profileId)
+      : '';
+
     const youtubePrompt = `Based on this script content, generate 5 compelling YouTube video hooks (opening lines that make viewers click and watch):
 
 ${scriptContent}
@@ -23,16 +29,30 @@ ${scriptContent}
 Audience Level: ${audienceLevel}
 Return exactly 5 hooks, one per line, numbered 1-5. Keep each under 20 words.`;
 
+    const youtubeMessages = profileInstruction
+      ? [
+          { role: 'system' as const, content: profileInstruction },
+          { role: 'user' as const, content: youtubePrompt },
+        ]
+      : [{ role: 'user' as const, content: youtubePrompt }];
+
+    const tiktokMessages = profileInstruction
+      ? [
+          { role: 'system' as const, content: profileInstruction },
+          { role: 'user' as const, content: tiktokPrompt },
+        ]
+      : [{ role: 'user' as const, content: tiktokPrompt }];
+
     const [youtubeResponse, tiktokResponse] = await Promise.all([
       client.chat.completions.create({
         model: 'gpt-4-turbo',
-        messages: [{ role: 'user', content: youtubePrompt }],
+        messages: youtubeMessages,
         temperature: 0.8,
         max_tokens: 500,
       }),
       client.chat.completions.create({
         model: 'gpt-4-turbo',
-        messages: [{ role: 'user', content: tiktokPrompt }],
+        messages: tiktokMessages,
         temperature: 0.8,
         max_tokens: 500,
       }),
