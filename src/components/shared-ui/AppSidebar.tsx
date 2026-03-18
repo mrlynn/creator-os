@@ -22,6 +22,8 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CollectionsBookmarkIcon from '@mui/icons-material/CollectionsBookmark';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import PsychologyIcon from '@mui/icons-material/Psychology';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 const SIDEBAR_WIDTH = 220;
 
@@ -35,6 +37,8 @@ const navItems: { label: string; href: string; icon: React.ReactNode; disabled?:
   { label: 'Tags', href: '/app/tags', icon: <LocalOfferIcon fontSize="small" /> },
   { label: 'AI Toolkit', href: '/app/ai-toolkit', icon: <PsychologyIcon fontSize="small" /> },
   { label: 'Analytics', href: '/app/analytics', icon: <BarChartIcon fontSize="small" /> },
+  { label: 'Settings', href: '/app/settings', icon: <SettingsIcon fontSize="small" /> },
+  { label: 'Help', href: '/app/help', icon: <HelpOutlineIcon fontSize="small" /> },
 ];
 
 export function AppSidebar() {
