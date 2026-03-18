@@ -94,6 +94,19 @@ export const CreateAnalyticsSnapshotSchema = z.object({
   shareCount: z.number().nonnegative(),
   watchTimeMinutes: z.number().optional(),
   engagement: z.number().optional(),
+  clickThroughRate: z.number().optional(),
+});
+
+export const UpdateAnalyticsSnapshotSchema = z.object({
+  platform: z.enum(['youtube', 'tiktok', 'instagram', 'overall']).optional(),
+  snapshotDate: z.string().datetime().optional(),
+  viewCount: z.number().nonnegative().optional(),
+  likeCount: z.number().nonnegative().optional(),
+  commentCount: z.number().nonnegative().optional(),
+  shareCount: z.number().nonnegative().optional(),
+  watchTimeMinutes: z.number().optional(),
+  engagement: z.number().optional(),
+  clickThroughRate: z.number().optional(),
 });
 
 // Series Schemas
@@ -125,6 +138,9 @@ export type UpdatePublishingRecordInput = z.infer<
 >;
 export type CreateAnalyticsSnapshotInput = z.infer<
   typeof CreateAnalyticsSnapshotSchema
+>;
+export type UpdateAnalyticsSnapshotInput = z.infer<
+  typeof UpdateAnalyticsSnapshotSchema
 >;
 export type CreateSeriesInput = z.infer<typeof CreateSeriesSchema>;
 export type UpdateSeriesInput = z.infer<typeof UpdateSeriesSchema>;

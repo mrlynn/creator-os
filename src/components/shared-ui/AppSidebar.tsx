@@ -21,12 +21,12 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 
 const SIDEBAR_WIDTH = 220;
 
-const navItems = [
+const navItems: { label: string; href: string; icon: React.ReactNode; disabled?: boolean }[] = [
   { label: 'Dashboard', href: '/app/dashboard', icon: <DashboardIcon fontSize="small" /> },
   { label: 'Ideas', href: '/app/ideas', icon: <LightbulbIcon fontSize="small" /> },
   { label: 'Scripts', href: '/app/scripts', icon: <ArticleIcon fontSize="small" /> },
   { label: 'Pipeline', href: '/app/pipeline', icon: <ViewKanbanIcon fontSize="small" /> },
-  { label: 'Analytics', href: '/app/analytics', icon: <BarChartIcon fontSize="small" />, disabled: true },
+  { label: 'Analytics', href: '/app/analytics', icon: <BarChartIcon fontSize="small" /> },
 ];
 
 export function AppSidebar() {
