@@ -4,6 +4,20 @@ import { getProfileInstruction } from './instruction-profile';
 import { getRagContext } from './rag-retrieval';
 
 const MAX_SCRIPT_CHARS = 4000;
+const TIMESTAMP_REGEX = /^\d{1,2}:\d{2}$/;
+
+function isValidTimestampRange(
+  tr: unknown
+): tr is { start: string; end: string } {
+  if (!tr || typeof tr !== 'object') return false;
+  const o = tr as Record<string, unknown>;
+  return (
+    typeof o.start === 'string' &&
+    typeof o.end === 'string' &&
+    TIMESTAMP_REGEX.test(o.start) &&
+    TIMESTAMP_REGEX.test(o.end)
+  );
+}
 
 export interface ClipConcept {
   clipNumber: number;
@@ -14,6 +28,7 @@ export interface ClipConcept {
   script: string;
   onScreenTextSuggestions?: string[];
   whyItStandsAlone: string;
+  timestampRange?: { start: string; end: string };
 }
 
 export async function generateClipConcepts(
@@ -55,6 +70,7 @@ Return a JSON object with a "clips" array. Each clip must have:
 - script: string (the clip script content)
 - onScreenTextSuggestions: string[] (optional, text overlays)
 - whyItStandsAlone: string
+- timestampRange: { start: string, end: string } (optional, approximate timestamps in MM:SS format based on script position, e.g. "2:30", "3:45")
 
 Return only valid JSON, no markdown.${ragContext ? `\n\n${ragContext}` : ''}`;
   const systemPrompt = profilePrefix
@@ -67,7 +83,7 @@ ${truncatedScript}
 ---
 Target platform for clips: ${platform}
 
-Identify 4–6 self-contained moments. Return JSON: { "clips": [ { clipNumber, conceptTitle, originalSection, estimatedDuration, newHook, script, onScreenTextSuggestions, whyItStandsAlone } ] }`;
+Identify 4–6 self-contained moments. Return JSON: { "clips": [ { clipNumber, conceptTitle, originalSection, estimatedDuration, newHook, script, onScreenTextSuggestions, whyItStandsAlone, timestampRange?: { start: "MM:SS", end: "MM:SS" } } ] }`;
 
   try {
     const res = await client.chat.completions.create({
@@ -114,9 +130,20 @@ Identify 4–6 self-contained moments. Return JSON: { "clips": [ { clipNumber, c
       success: true,
     }).catch(console.error);
 
+    const normalizedClips: ClipConcept[] = clips.map((c) => {
+      const clip = { ...c } as ClipConcept;
+      const tr = (c as Record<string, unknown>).timestampRange;
+      if (isValidTimestampRange(tr)) {
+        clip.timestampRange = { start: tr.start, end: tr.end };
+      } else {
+        delete clip.timestampRange;
+      }
+      return clip;
+    });
+
     return {
       success: true,
-      clips: clips as ClipConcept[],
+      clips: normalizedClips,
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
