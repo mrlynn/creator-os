@@ -14,9 +14,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const episodeId = searchParams.get('episodeId');
+    const platform = searchParams.get('platform');
 
-    const query: Record<string, string> = {};
+    const query: Record<string, any> = {};
     if (episodeId) query.episodeId = episodeId;
+    if (platform) query.platform = platform;
 
     const snapshots = await AnalyticsSnapshot.find(query)
       .populate('episodeId')

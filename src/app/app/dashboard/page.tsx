@@ -5,278 +5,178 @@ import {
   Container,
   Typography,
   Box,
-  Grid,
   Paper,
+  Stack,
+  Grid,
   CircularProgress,
-  Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  ToggleButton,
-  ToggleButtonGroup,
-  Alert,
+  Button,
+  Link,
 } from '@mui/material';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import TimerIcon from '@mui/icons-material/Timer';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { useRouter } from 'next/navigation';
+import NextLink from 'next/link';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import ArticleIcon from '@mui/icons-material/Article';
 
-interface CategoryStat {
-  category: string;
-  tokens: number;
-  requests: number;
-  estimatedCost: number;
-  successRate: number;
-  avgDurationMs: number;
-}
-
-interface DailyPoint {
-  _id: string;
-  tokens: number;
-  requests: number;
-}
-
-interface RecentLog {
-  _id: string;
-  category: string;
-  tokensUsed: number;
-  durationMs: number;
-  success: boolean;
-  aiModel: string;
-  createdAt: string;
-}
-
-interface UsageData {
-  summary: {
-    totalTokens: number;
-    totalRequests: number;
-    estimatedCost: number;
-    successRate: number;
-    avgDurationMs: number;
-  };
-  byCategory: CategoryStat[];
-  dailyUsage: DailyPoint[];
-  recentLogs: RecentLog[];
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Paper sx={{ p: 2.5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-        <Box sx={{ color: 'primary.main' }}>{icon}</Box>
-        <Typography variant="body2" color="textSecondary">
-          {label}
-        </Typography>
-      </Box>
-      <Typography variant="h4" sx={{ fontWeight: 700 }}>
-        {value}
-      </Typography>
-      {sub && (
-        <Typography variant="caption" color="textSecondary">
-          {sub}
-        </Typography>
-      )}
-    </Paper>
-  );
+interface Stats {
+  ideasCount: number;
+  scriptsCount: number;
+  episodesCount: number;
 }
 
 export default function DashboardPage() {
-  const [usage, setUsage] = useState<UsageData | null>(null);
+  const router = useRouter();
+  const [stats, setStats] = useState<Stats>({ ideasCount: 0, scriptsCount: 0, episodesCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [days, setDays] = useState(30);
 
   useEffect(() => {
-    const fetchUsage = async () => {
-      setLoading(true);
-      setError(null);
+    const fetchStats = async () => {
       try {
-        const res = await fetch(`/api/ai-usage-logs?days=${days}`);
-        if (!res.ok) throw new Error('Failed to fetch usage data');
-        const data = await res.json();
-        setUsage(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        const [ideasRes, scriptsRes, episodesRes] = await Promise.all([
+          fetch('/api/ideas?limit=1'),
+          fetch('/api/scripts?limit=1'),
+          fetch('/api/episodes?limit=1'),
+        ]);
+
+        const [ideas, scripts, episodes] = await Promise.all([
+          ideasRes.json(),
+          scriptsRes.json(),
+          episodesRes.json(),
+        ]);
+
+        setStats({
+          ideasCount: ideas.pagination?.total || 0,
+          scriptsCount: scripts.pagination?.total || 0,
+          episodesCount: episodes.pagination?.total || 0,
+        });
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUsage();
-  }, [days]);
+    fetchStats();
+  }, []);
 
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
-
-  const formatCategory = (cat: string) =>
-    cat.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const quickActions = [
+    {
+      label: 'New Idea',
+      href: '/app/ideas/new',
+      icon: <LightbulbIcon />,
+      color: 'primary',
+    },
+    {
+      label: 'View Ideas',
+      href: '/app/ideas',
+      icon: <LightbulbIcon />,
+      color: 'default',
+    },
+    {
+      label: 'View Scripts',
+      href: '/app/scripts',
+      icon: <ArticleIcon />,
+      color: 'default',
+    },
+    {
+      label: 'Pipeline',
+      href: '/app/pipeline',
+      icon: <BarChartIcon />,
+      color: 'default',
+    },
+  ];
 
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h3" component="h1">
-            Dashboard
-          </Typography>
-          <ToggleButtonGroup
-            value={days}
-            exclusive
-            onChange={(_, v) => v && setDays(v)}
-            size="small"
-          >
-            <ToggleButton value={7}>7d</ToggleButton>
-            <ToggleButton value={30}>30d</ToggleButton>
-            <ToggleButton value={90}>90d</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
+          Dashboard
+        </Typography>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
-        ) : usage ? (
+        ) : (
           <>
-            {/* Summary cards */}
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <StatCard
-                  label="Total Tokens"
-                  value={usage.summary.totalTokens.toLocaleString()}
-                  sub={`${usage.summary.totalRequests} requests`}
-                  icon={<AutoFixHighIcon />}
-                />
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={4}>
+                <Paper sx={{ p: 3, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+                    {stats.ideasCount}
+                  </Typography>
+                  <Typography variant="body1">
+                    Total Ideas
+                  </Typography>
+                </Paper>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <StatCard
-                  label="Estimated Cost"
-                  value={`$${usage.summary.estimatedCost.toFixed(4)}`}
-                  sub="GPT-4 Turbo rate"
-                  icon={<AttachMoneyIcon />}
-                />
+
+              <Grid item xs={12} sm={4}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+                    {stats.scriptsCount}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    Total Scripts
+                  </Typography>
+                </Paper>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <StatCard
-                  label="Success Rate"
-                  value={`${usage.summary.successRate}%`}
-                  sub="of all requests"
-                  icon={<CheckCircleIcon />}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <StatCard
-                  label="Avg Duration"
-                  value={formatDuration(usage.summary.avgDurationMs || 0)}
-                  sub="per AI request"
-                  icon={<TimerIcon />}
-                />
+
+              <Grid item xs={12} sm={4}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+                    {stats.episodesCount}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    Total Episodes
+                  </Typography>
+                </Paper>
               </Grid>
             </Grid>
 
-            {usage.summary.totalRequests === 0 ? (
-              <Paper sx={{ p: 4, textAlign: 'center' }}>
-                <Typography color="textSecondary" gutterBottom>
-                  No AI usage recorded in the last {days} days.
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Generate a script to start tracking usage.
-                </Typography>
-              </Paper>
-            ) : (
-              <Grid container spacing={3}>
-                {/* By category */}
-                <Grid item xs={12} md={7}>
-                  <Paper sx={{ p: 2.5 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Usage by feature
-                    </Typography>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Feature</TableCell>
-                          <TableCell align="right">Requests</TableCell>
-                          <TableCell align="right">Tokens</TableCell>
-                          <TableCell align="right">Cost</TableCell>
-                          <TableCell align="right">Avg time</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {usage.byCategory.map((cat) => (
-                          <TableRow key={cat.category}>
-                            <TableCell>
-                              <Typography variant="body2">
-                                {formatCategory(cat.category)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="right">{cat.requests}</TableCell>
-                            <TableCell align="right">{cat.tokens.toLocaleString()}</TableCell>
-                            <TableCell align="right">${cat.estimatedCost.toFixed(4)}</TableCell>
-                            <TableCell align="right">{formatDuration(cat.avgDurationMs)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Paper>
-                </Grid>
+            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+              Quick Actions
+            </Typography>
 
-                {/* Recent logs */}
-                <Grid item xs={12} md={5}>
-                  <Paper sx={{ p: 2.5 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Recent requests
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {usage.recentLogs.map((log) => (
-                        <Box
-                          key={log._id}
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            py: 0.75,
-                            borderBottom: '1px solid',
-                            borderColor: 'divider',
-                          }}
-                        >
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                              {formatCategory(log.category)}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                              {new Date(log.createdAt).toLocaleString()} •{' '}
-                              {log.tokensUsed.toLocaleString()} tokens
-                            </Typography>
-                          </Box>
-                          <Chip
-                            label={log.success ? 'ok' : 'fail'}
-                            size="small"
-                            color={log.success ? 'success' : 'error'}
-                            variant="outlined"
-                          />
-                        </Box>
-                      ))}
-                    </Box>
-                  </Paper>
-                </Grid>
-              </Grid>
-            )}
+            <Stack direction="row" spacing={2} flexWrap="wrap">
+              {quickActions.map((action) => (
+                <Button
+                  key={action.label}
+                  variant={action.color === 'primary' ? 'contained' : 'outlined'}
+                  color={action.color === 'primary' ? 'primary' : 'secondary'}
+                  startIcon={action.icon}
+                  onClick={() => router.push(action.href)}
+                  sx={{ py: 1.5, px: 3 }}
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </Stack>
+
+            <Box sx={{ mt: 6, pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="h6" gutterBottom>
+                Getting Started
+              </Typography>
+
+              <Stack spacing={2}>
+                <Typography variant="body1">
+                  <Link href="https://github.com/mrlynn/ai-creator-os" target="_blank" underline="hover">
+                    Creator OS
+                  </Link>{' '}
+                  is your content creation platform. Build your content pipeline from ideas to publishing.
+                </Typography>
+
+                <Typography variant="body1">
+                  <strong>Current flow:</strong> Create an idea → Generate a script with AI → Create an episode → Track in pipeline
+                </Typography>
+
+                <Button component={NextLink} href="/app/help" variant="outlined" size="small" sx={{ alignSelf: 'flex-start' }}>
+                  View full documentation
+                </Button>
+              </Stack>
+            </Box>
           </>
-        ) : null}
+        )}
       </Box>
     </Container>
   );

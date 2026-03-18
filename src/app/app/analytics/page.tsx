@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 interface Episode {
   _id: string;
@@ -62,6 +63,19 @@ export default function AnalyticsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<{
+    headline: string;
+    wins: string[];
+    underperformers: string[];
+    patterns: string[];
+    recommendations: string[];
+    momentumScore: number;
+  } | null>(null);
+
+  const [snapshotFilters, setSnapshotFilters] = useState({ episodeId: '', platform: '' });
+
   const [form, setForm] = useState({
     episodeId: '',
     platform: 'youtube',
@@ -74,16 +88,15 @@ export default function AnalyticsPage() {
     engagement: '',
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const snapParams = new URLSearchParams();
+      if (snapshotFilters.episodeId) snapParams.append('episodeId', snapshotFilters.episodeId);
+      if (snapshotFilters.platform) snapParams.append('platform', snapshotFilters.platform);
       const [epRes, snapRes, heatRes] = await Promise.all([
         fetch('/api/episodes?limit=100'),
-        fetch('/api/analytics-snapshots'),
+        fetch(`/api/analytics-snapshots?${snapParams}`),
         fetch('/api/analytics/heatmap'),
       ]);
 
@@ -104,7 +117,11 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [snapshotFilters.episodeId, snapshotFilters.platform]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +197,26 @@ export default function AnalyticsPage() {
     }
   };
 
+  const handleGenerateReport = async () => {
+    setReportLoading(true);
+    setReportError(null);
+    setReportData(null);
+    try {
+      const res = await fetch('/api/ai/insight-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate report');
+      setReportData(data);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : 'Failed to generate report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const getEpisodeTitle = (snap: AnalyticsSnapshot) => {
     const ep = snap.episodeId;
     return typeof ep === 'object' && ep?.title ? ep.title : 'Unknown';
@@ -198,9 +235,76 @@ export default function AnalyticsPage() {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Analytics
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="h3" component="h1">
+            Analytics
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={reportLoading ? <CircularProgress size={18} color="inherit" /> : <AssessmentIcon />}
+            onClick={handleGenerateReport}
+            disabled={reportLoading}
+          >
+            Generate Weekly Report
+          </Button>
+        </Box>
+
+        {reportError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setReportError(null)}>
+            {reportError}
+          </Alert>
+        )}
+
+        {reportData && (
+          <Paper sx={{ p: 2, mb: 3, bgcolor: 'action.hover' }}>
+            <Typography variant="h6" gutterBottom>
+              {reportData.headline}
+            </Typography>
+            {reportData.wins.length > 0 && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="subtitle2">Wins</Typography>
+                {reportData.wins.map((w, i) => (
+                  <Typography key={i} variant="body2">
+                    • {w}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+            {reportData.underperformers.length > 0 && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="subtitle2">Underperformers</Typography>
+                {reportData.underperformers.map((u, i) => (
+                  <Typography key={i} variant="body2">
+                    • {u}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+            {reportData.patterns.length > 0 && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="subtitle2">Patterns</Typography>
+                {reportData.patterns.map((p, i) => (
+                  <Typography key={i} variant="body2">
+                    • {p}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+            {reportData.recommendations.length > 0 && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="subtitle2">Recommendations</Typography>
+                {reportData.recommendations.map((r, i) => (
+                  <Typography key={i} variant="body2">
+                    • {r}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              Momentum Score: {reportData.momentumScore}/10
+            </Typography>
+          </Paper>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -409,6 +513,38 @@ export default function AnalyticsPage() {
         <Typography variant="h6" gutterBottom>
           Snapshots
         </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+          <TextField
+            select
+            size="small"
+            label="Filter by Episode"
+            sx={{ minWidth: 200 }}
+            value={snapshotFilters.episodeId}
+            onChange={(e) => setSnapshotFilters((p) => ({ ...p, episodeId: e.target.value }))}
+          >
+            <MenuItem value="">All episodes</MenuItem>
+            {episodes.map((ep) => (
+              <MenuItem key={ep._id} value={ep._id}>
+                {ep.title}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Filter by Platform"
+            sx={{ minWidth: 150 }}
+            value={snapshotFilters.platform}
+            onChange={(e) => setSnapshotFilters((p) => ({ ...p, platform: e.target.value }))}
+          >
+            <MenuItem value="">All platforms</MenuItem>
+            {PLATFORMS.map((p) => (
+              <MenuItem key={p} value={p}>
+                {p}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
         {snapshots.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
             <Typography color="textSecondary">

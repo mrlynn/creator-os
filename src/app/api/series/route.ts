@@ -43,9 +43,16 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'active';
+    const q = searchParams.get('q')?.trim();
 
-    const query: Record<string, string> = {};
+    const query: Record<string, any> = {};
     if (status !== 'all') query.status = status;
+    if (q) {
+      query.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+      ];
+    }
 
     const seriesList = await Series.find(query).sort({ createdAt: -1 }).lean();
 

@@ -61,7 +61,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       );
     }
 
-    const episode = await Episode.findByIdAndUpdate(params.id, validationResult.data, {
+    const updateData: Record<string, unknown> = { ...validationResult.data };
+    if ('seriesId' in updateData) {
+      if (updateData.seriesId === null || updateData.seriesId === '') {
+        updateData.seriesId = null;
+      } else if (typeof updateData.seriesId === 'string' && Types.ObjectId.isValid(updateData.seriesId)) {
+        updateData.seriesId = new Types.ObjectId(updateData.seriesId);
+      } else {
+        delete updateData.seriesId;
+      }
+    }
+
+    const episode = await Episode.findByIdAndUpdate(params.id, updateData, {
       new: true,
       runValidators: true,
     })
@@ -80,6 +91,39 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     console.error('Error updating episode:', error);
     return Response.json(
       { error: 'Failed to update episode', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectToDatabase();
+
+    if (!Types.ObjectId.isValid(params.id)) {
+      return Response.json({ error: 'Invalid ID' }, { status: 400 });
+    }
+
+    const episode = await Episode.findByIdAndUpdate(
+      params.id,
+      { publishingStatus: 'archived' },
+      { new: true }
+    );
+
+    if (!episode) {
+      return Response.json({ error: 'Episode not found' }, { status: 404 });
+    }
+
+    return Response.json({ message: 'Episode archived successfully', episode });
+  } catch (error) {
+    console.error('Error archiving episode:', error);
+    return Response.json(
+      { error: 'Failed to archive episode', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

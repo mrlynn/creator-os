@@ -106,3 +106,36 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     );
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectToDatabase();
+
+    if (!Types.ObjectId.isValid(params.id)) {
+      return Response.json({ error: 'Invalid ID' }, { status: 400 });
+    }
+
+    const script = await Script.findByIdAndUpdate(
+      params.id,
+      { status: 'archived' },
+      { new: true }
+    );
+
+    if (!script) {
+      return Response.json({ error: 'Script not found' }, { status: 404 });
+    }
+
+    return Response.json({ message: 'Script archived successfully', script });
+  } catch (error) {
+    console.error('Error archiving script:', error);
+    return Response.json(
+      { error: 'Failed to archive script', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}

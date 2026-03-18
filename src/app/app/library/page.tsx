@@ -133,7 +133,7 @@ export default function LibraryPage() {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Typography variant="h3" component="h1" gutterBottom>
+        <Typography variant="h3" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
           Content Library
         </Typography>
         <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
@@ -156,7 +156,7 @@ export default function LibraryPage() {
             onChange={(v) => setFilters((p) => ({ ...p, search: v }))}
             placeholder="Search episodes..."
           />
-          <FormControl sx={{ minWidth: 150 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }}>
             <InputLabel>Publishing Status</InputLabel>
             <Select
               value={filters.publishingStatus}
@@ -171,7 +171,7 @@ export default function LibraryPage() {
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 150 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }}>
             <InputLabel>Editing Status</InputLabel>
             <Select
               value={filters.editingStatus}
@@ -186,7 +186,7 @@ export default function LibraryPage() {
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 180 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
             <InputLabel>Series</InputLabel>
             <Select
               value={filters.seriesId}
@@ -209,7 +209,7 @@ export default function LibraryPage() {
             onChange={(_, newValue) => {
               setFilters((p) => ({ ...p, tagIds: newValue.map((t) => t._id) }));
             }}
-            sx={{ minWidth: 200 }}
+            sx={{ minWidth: { xs: '100%', sm: 200 } }}
             renderInput={(params) => (
               <TextField {...params} label="Tags" placeholder="Filter by tags" />
             )}

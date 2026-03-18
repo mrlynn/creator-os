@@ -36,16 +36,16 @@
 | 01 | Metadata export (Library — Copy for YouTube, TikTok, JSON) | ✅ Done (cd357a6) |
 | 02 | Metadata export (Pipeline card quick copy) | ✅ Done (c1bf105) |
 
-**Phase 2 (Deferred):** OAuth + upload
+**Phase 2:** OAuth + upload (ready)
 
 | Plan | Feature | Status |
 |------|---------|--------|
-| 03 | PlatformConnection model | Deferred |
-| 04 | YouTube OAuth connect | Deferred |
-| 05 | TikTok OAuth connect | Deferred |
-| 06 | Upload flow (private-only) | Deferred |
+| 03 | PlatformConnection model | Ready |
+| 04 | YouTube OAuth + Settings page | Ready |
+| 05 | TikTok OAuth connect | Ready |
+| 06 | Upload flow (private-only) | Ready |
 
-**Plans:** 6 plans (01–02 execute first; 03–06 deferred)
+**Plans:** 6 plans. Phase 1 done; Phase 2 execute 03 → 04 → 05 → 06 (sequential).
 
 ### Sprint 10: Extended Capture
 

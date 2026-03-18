@@ -127,9 +127,7 @@ export default function NewTagPage() {
               </FormControl>
 
               <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                <Link href="/app/tags" passHref>
-                  <Button component="a">Back</Button>
-                </Link>
+                <Button component={Link} href="/app/tags">Back</Button>
                 <Button
                   type="submit"
                   variant="contained"

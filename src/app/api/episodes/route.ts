@@ -77,6 +77,13 @@ export async function GET(request: Request) {
         query.tags = { $in: validIds.map((tid) => new Types.ObjectId(tid)) };
       }
     }
+    const q = searchParams.get('q')?.trim();
+    if (q) {
+      query.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+      ];
+    }
 
     const episodes = await Episode.find(query)
       .populate('ideaId')

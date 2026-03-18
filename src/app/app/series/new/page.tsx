@@ -97,9 +97,7 @@ export default function NewSeriesPage() {
               />
 
               <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                <Link href="/app/series" passHref>
-                  <Button component="a">Back</Button>
-                </Link>
+                <Button component={Link} href="/app/series">Back</Button>
                 <Button
                   type="submit"
                   variant="contained"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import {
   Container,
   Typography,
@@ -196,6 +197,20 @@ export default function PipelinePage() {
     }
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const { source, destination } = result;
+    if (source.droppableId === destination.droppableId) return;
+
+    const episodeId = result.draggableId;
+    const newStatus = destination.droppableId;
+
+    setEpisodes((prev) =>
+      prev.map((e) => (e._id === episodeId ? { ...e, editingStatus: newStatus } : e))
+    );
+    moveEpisode(episodeId, newStatus);
+  };
+
   const handlePlanThisWeek = async () => {
     setPlanLoading(true);
     setPlanError(null);
@@ -291,13 +306,13 @@ export default function PipelinePage() {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="h3" component="h1">
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="h3" component="h1" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
             Publishing Pipeline
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="stretch" flexWrap="wrap" useFlexGap>
             <SearchField value={search} onChange={setSearch} placeholder="Search episodes..." size="small" />
-            <FormControl size="small" sx={{ minWidth: 140 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 } }}>
               <InputLabel>Editing Status</InputLabel>
               <Select
                 value={editingFilter}
@@ -573,124 +588,155 @@ export default function PipelinePage() {
             </Typography>
           </Paper>
         ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${EDITING_STATUSES.length}, 1fr)`,
-              gap: 2,
-              overflowX: 'auto',
-            }}
-          >
-            {EDITING_STATUSES.map((status) => {
-              const columnEpisodes = episodes.filter((e) => e.editingStatus === status);
-              return (
-                <Paper key={status} sx={{ p: 2, minHeight: 400, bgcolor: '#f5f5f5' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      {STATUS_LABELS[status]}
-                    </Typography>
-                    <Chip label={columnEpisodes.length} size="small" />
-                  </Box>
-
-                  <Stack spacing={1.5}>
-                    {columnEpisodes.map((episode) => (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: `repeat(${EDITING_STATUSES.length}, minmax(200px, 1fr))`,
+                  md: `repeat(${EDITING_STATUSES.length}, 1fr)`,
+                },
+                gap: 2,
+                overflowX: 'auto',
+                pb: 1,
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {EDITING_STATUSES.map((status) => {
+                const columnEpisodes = episodes.filter((e) => e.editingStatus === status);
+                return (
+                  <Droppable key={status} droppableId={status}>
+                    {(provided) => (
                       <Paper
-                        key={episode._id}
-                        sx={{
-                          p: 1.5,
-                          bgcolor: 'white',
-                          '&:hover': { boxShadow: 2 },
-                        }}
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        sx={{ p: 2, minHeight: 400, minWidth: { xs: 200, md: 'auto' }, bgcolor: '#f5f5f5' }}
                       >
-                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                          {episode.title}
-                        </Typography>
-                        {episode.ideaId?.title && (
-                          <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>
-                            {episode.ideaId.title}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                            {STATUS_LABELS[status]}
                           </Typography>
-                        )}
+                          <Chip label={columnEpisodes.length} size="small" />
+                        </Box>
 
-                        {/* Publishing records on this episode */}
-                        {episode.publishingRecords && episode.publishingRecords.length > 0 && (
-                          <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mb: 1 }}>
-                            {episode.publishingRecords.map((rec) => (
-                              <Chip
-                                key={rec._id}
-                                label={rec.platform}
-                                size="small"
-                                color={PLATFORM_COLORS[rec.platform] || 'default'}
-                                variant="outlined"
-                              />
-                            ))}
-                          </Stack>
-                        )}
+                        <Stack spacing={1.5}>
+                          {columnEpisodes.map((episode, index) => (
+                            <Draggable key={episode._id} draggableId={episode._id} index={index}>
+                              {(dragProvided) => (
+                                <Paper
+                                  ref={dragProvided.innerRef}
+                                  {...dragProvided.draggableProps}
+                                  {...dragProvided.dragHandleProps}
+                                  sx={{
+                                    p: 1.5,
+                                    bgcolor: 'white',
+                                    '&:hover': { boxShadow: 2 },
+                                    cursor: 'grab',
+                                    '&:active': { cursor: 'grabbing' },
+                                  }}
+                                >
+                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                    {episode.title}
+                                  </Typography>
+                                  {episode.ideaId?.title && (
+                                    <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>
+                                      {episode.ideaId.title}
+                                    </Typography>
+                                  )}
 
-                        <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} alignItems="center">
-                          {status !== 'done' && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() =>
-                                moveEpisode(
-                                  episode._id,
-                                  EDITING_STATUSES[EDITING_STATUSES.indexOf(status) + 1]
-                                )
-                              }
-                            >
-                              Next
-                            </Button>
-                          )}
-                          <Button
-                            size="small"
-                            variant="text"
-                            startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
-                            onClick={() => {
-                              const desc = episode.description || '';
-                              const tagList = (episode.tags || []).map((t) => t.name).join(', ');
-                              const text = [episode.title, desc, tagList ? `Tags: ${tagList}` : ''].filter(Boolean).join('\n\n');
-                              navigator.clipboard.writeText(text);
-                              setCopySnackbar(true);
-                            }}
-                          >
-                            Copy
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="text"
-                            startIcon={<PublishIcon sx={{ fontSize: 14 }} />}
-                            onClick={() => handleOpenPubDialog(episode._id)}
-                          >
-                            Publish
-                          </Button>
-                          {youtubeConnected && (
-                            <Button
-                              size="small"
-                              variant="text"
-                              startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
-                              onClick={() => handleOpenUploadDialog(episode._id, 'youtube')}
-                            >
-                              Upload YT
-                            </Button>
-                          )}
-                          {tiktokConnected && (
-                            <Button
-                              size="small"
-                              variant="text"
-                              startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
-                              onClick={() => handleOpenUploadDialog(episode._id, 'tiktok')}
-                            >
-                              Upload TT
-                            </Button>
-                          )}
+                                  {episode.publishingRecords && episode.publishingRecords.length > 0 && (
+                                    <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mb: 1 }}>
+                                      {episode.publishingRecords.map((rec) => (
+                                        <Chip
+                                          key={rec._id}
+                                          label={rec.platform}
+                                          size="small"
+                                          color={PLATFORM_COLORS[rec.platform] || 'default'}
+                                          variant="outlined"
+                                        />
+                                      ))}
+                                    </Stack>
+                                  )}
+
+                                  <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} alignItems="center">
+                                    {status !== 'done' && (
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          moveEpisode(episode._id, EDITING_STATUSES[EDITING_STATUSES.indexOf(status) + 1]);
+                                        }}
+                                      >
+                                        Next
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="small"
+                                      variant="text"
+                                      startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const desc = episode.description || '';
+                                        const tagList = (episode.tags || []).map((t) => t.name).join(', ');
+                                        const text = [episode.title, desc, tagList ? `Tags: ${tagList}` : ''].filter(Boolean).join('\n\n');
+                                        navigator.clipboard.writeText(text);
+                                        setCopySnackbar(true);
+                                      }}
+                                    >
+                                      Copy
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="text"
+                                      startIcon={<PublishIcon sx={{ fontSize: 14 }} />}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenPubDialog(episode._id);
+                                      }}
+                                    >
+                                      Publish
+                                    </Button>
+                                    {youtubeConnected && (
+                                      <Button
+                                        size="small"
+                                        variant="text"
+                                        startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenUploadDialog(episode._id, 'youtube');
+                                        }}
+                                      >
+                                        Upload YT
+                                      </Button>
+                                    )}
+                                    {tiktokConnected && (
+                                      <Button
+                                        size="small"
+                                        variant="text"
+                                        startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenUploadDialog(episode._id, 'tiktok');
+                                        }}
+                                      >
+                                        Upload TT
+                                      </Button>
+                                    )}
+                                  </Stack>
+                                </Paper>
+                              )}
+                            </Draggable>
+                          ))}
                         </Stack>
+                        {provided.placeholder}
                       </Paper>
-                    ))}
-                  </Stack>
-                </Paper>
-              );
-            })}
-          </Box>
+                    )}
+                  </Droppable>
+                );
+              })}
+            </Box>
+          </DragDropContext>
         )}
       </Box>
     </Container>

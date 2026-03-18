@@ -145,11 +145,9 @@ export default function SeriesDetailPage() {
     return (
       <Container>
         <Alert severity="error">Series not found</Alert>
-        <Link href="/app/series" passHref>
-          <Button sx={{ mt: 2 }} component="a" startIcon={<ArrowBackIcon />}>
-            Back to Series
-          </Button>
-        </Link>
+        <Button sx={{ mt: 2 }} component={Link} href="/app/series" startIcon={<ArrowBackIcon />}>
+          Back to Series
+        </Button>
       </Container>
     );
   }
@@ -157,11 +155,9 @@ export default function SeriesDetailPage() {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Link href="/app/series" passHref>
-          <Button startIcon={<ArrowBackIcon />} component="a" sx={{ mb: 2 }}>
-            Back to Series
-          </Button>
-        </Link>
+        <Button startIcon={<ArrowBackIcon />} component={Link} href="/app/series" sx={{ mb: 2 }}>
+          Back to Series
+        </Button>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -278,11 +274,9 @@ export default function SeriesDetailPage() {
                     )}
                   </Stack>
                 </Box>
-                <Link href={`/app/library/${ep._id}`} passHref>
-                  <Button size="small" component="a">
-                    View
-                  </Button>
-                </Link>
+                <Button size="small" component={Link} href={`/app/library/${ep._id}`}>
+                  View
+                </Button>
               </Paper>
             ))}
           </Stack>

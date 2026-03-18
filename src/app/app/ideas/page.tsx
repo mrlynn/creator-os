@@ -16,10 +16,12 @@ import {
 } from '@mui/material';
 import Link from 'next/link';
 import { IdeaCard } from '@/components/ideas/IdeaCard';
+import { NewsResearchDialog } from '@/components/ideas/NewsResearchDialog';
 import { SearchField } from '@/components/shared-ui/SearchField';
 import { ListSkeleton } from '@/components/shared-ui/ListSkeleton';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { useToast } from '@/components/shared-ui/Toast';
 
 interface Idea {
@@ -40,6 +42,7 @@ export default function IdeasPage() {
   const [status, setStatus] = useState('');
   const [platform, setPlatform] = useState('');
   const [search, setSearch] = useState('');
+  const [newsDialogOpen, setNewsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchIdeas = useCallback(async () => {
@@ -72,19 +75,34 @@ export default function IdeasPage() {
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h3" component="h1">
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 3 }}>
+          <Typography variant="h3" component="h1" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
             Ideas
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            href="/app/ideas/new"
-          >
-            New Idea
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={<NewspaperIcon />}
+              onClick={() => setNewsDialogOpen(true)}
+            >
+              News Research
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              href="/app/ideas/new"
+            >
+              New Idea
+            </Button>
+          </Stack>
         </Box>
+
+        <NewsResearchDialog
+          open={newsDialogOpen}
+          onClose={() => setNewsDialogOpen(false)}
+          onIdeaCreated={fetchIdeas}
+        />
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
           <SearchField value={search} onChange={setSearch} placeholder="Search ideas..." />

@@ -27,6 +27,7 @@ import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { SearchField } from '@/components/shared-ui/SearchField';
 
 interface Tag {
   _id: string;
@@ -40,6 +41,7 @@ export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('');
+  const [search, setSearch] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ export default function TagsPage() {
     try {
       const params = new URLSearchParams();
       if (category) params.append('category', category);
+      if (search.trim()) params.append('q', search.trim());
       const response = await fetch(`/api/tags?${params}`);
       if (!response.ok) throw new Error('Failed to fetch tags');
       const { data } = await response.json();
@@ -61,7 +64,7 @@ export default function TagsPage() {
 
   useEffect(() => {
     fetchTags();
-  }, [category]);
+  }, [category, search]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this tag?')) return;
@@ -102,11 +105,9 @@ export default function TagsPage() {
           <Typography variant="h3" component="h1">
             Tags
           </Typography>
-          <Link href="/app/tags/new" passHref>
-            <Button variant="contained" startIcon={<AddIcon />} component="a">
-              Add Tag
-            </Button>
-          </Link>
+          <Button variant="contained" startIcon={<AddIcon />} component={Link} href="/app/tags/new">
+            Add Tag
+          </Button>
         </Box>
 
         {error && (
@@ -123,7 +124,8 @@ export default function TagsPage() {
           message={successMessage}
         />
 
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+          <SearchField value={search} onChange={setSearch} placeholder="Search tags..." />
           <FormControl sx={{ minWidth: 150 }}>
             <InputLabel>Category</InputLabel>
             <Select
@@ -145,11 +147,9 @@ export default function TagsPage() {
             <Typography color="textSecondary">
               No tags yet. Create your first tag to get started.
             </Typography>
-            <Link href="/app/tags/new" passHref>
-              <Button variant="outlined" sx={{ mt: 2 }} component="a">
-                Add Tag
-              </Button>
-            </Link>
+            <Button variant="outlined" sx={{ mt: 2 }} component={Link} href="/app/tags/new">
+              Add Tag
+            </Button>
           </Paper>
         ) : (
           <TableContainer component={Paper}>
@@ -169,11 +169,9 @@ export default function TagsPage() {
                     <TableCell>{CATEGORY_LABELS[tag.category] || tag.category}</TableCell>
                     <TableCell>{tag.slug}</TableCell>
                     <TableCell align="right">
-                      <Link href={`/app/tags/${tag._id}`} passHref>
-                        <IconButton size="small" component="a" aria-label="Edit">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Link>
+                      <IconButton size="small" component={Link} href={`/app/tags/${tag._id}`} aria-label="Edit">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
                       <IconButton
                         size="small"
                         onClick={() => handleDelete(tag._id)}

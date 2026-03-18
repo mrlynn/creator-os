@@ -1,7 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardActions, Button, Typography, Box, Chip, Stack } from '@mui/material';
+import { Card, CardContent, CardActions, Button, Typography, Box, Chip, Stack, IconButton } from '@mui/material';
 import Link from 'next/link';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 interface IdeaCardProps {
   id: string;
@@ -12,6 +13,7 @@ interface IdeaCardProps {
   audience: string;
   format: string;
   viralityScore?: number;
+  onDelete?: (id: string) => void;
 }
 
 export function IdeaCard({
@@ -23,6 +25,7 @@ export function IdeaCard({
   audience,
   format,
   viralityScore,
+  onDelete,
 }: IdeaCardProps) {
   const statusColors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
     raw: 'default',
@@ -60,12 +63,15 @@ export function IdeaCard({
           </Box>
         )}
       </CardContent>
-      <CardActions>
-        <Link href={`/app/ideas/${id}`} passHref>
-          <Button size="small" component="a">
-            View Details
-          </Button>
-        </Link>
+      <CardActions sx={{ justifyContent: 'space-between' }}>
+        <Button size="small" component={Link} href={`/app/ideas/${id}`}>
+          View Details
+        </Button>
+        {onDelete && (
+          <IconButton size="small" color="error" onClick={() => onDelete(id)} aria-label="Delete">
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        )}
       </CardActions>
     </Card>
   );

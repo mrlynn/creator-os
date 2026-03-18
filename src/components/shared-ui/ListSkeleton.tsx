@@ -15,9 +15,10 @@ export function ListSkeleton({ count = 5, variant = 'card' }: ListSkeletonProps)
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gridTemplateColumns: { xs: `repeat(${columns}, minmax(200px, 1fr))`, md: `repeat(${columns}, 1fr)` },
           gap: 2,
           overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {Array.from({ length: columns }).map((_, colIdx) => (

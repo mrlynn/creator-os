@@ -16,6 +16,7 @@ import {
 import { useParams, useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import { GenerateScriptDialog } from '@/components/ideas/GenerateScriptDialog';
 
 interface Idea {
   _id: string;
@@ -40,8 +41,7 @@ export default function IdeaDetailPage() {
   const [idea, setIdea] = useState<Idea | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [creatingScript, setCreatingScript] = useState(false);
-  const [scriptError, setScriptError] = useState<string | null>(null);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
 
@@ -81,28 +81,8 @@ export default function IdeaDetailPage() {
     }
   };
 
-  const handleCreateScript = async () => {
-    setCreatingScript(true);
-    setScriptError(null);
-
-    try {
-      const response = await fetch('/api/scripts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ideaId }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create script');
-      }
-
-      const script = await response.json();
-      router.push(`/scripts/${script._id}`);
-    } catch (err) {
-      setScriptError(err instanceof Error ? err.message : 'An error occurred');
-      setCreatingScript(false);
-    }
+  const handleScriptSuccess = (scriptId: string) => {
+    router.push(`/app/scripts/${scriptId}`);
   };
 
   if (loading) {
@@ -169,29 +149,24 @@ export default function IdeaDetailPage() {
                 </>
               )}
 
-              {scriptError && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  {scriptError}
-                </Alert>
-              )}
-
               <Box sx={{ mt: 3 }}>
                 <Button
                   variant="contained"
                   size="large"
-                  startIcon={
-                    creatingScript ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <AutoFixHighIcon />
-                    )
-                  }
-                  onClick={handleCreateScript}
-                  disabled={creatingScript}
+                  startIcon={<AutoFixHighIcon />}
+                  onClick={() => setGenerateDialogOpen(true)}
                 >
-                  {creatingScript ? 'Creating Script...' : 'Create Script'}
+                  Generate Script
                 </Button>
               </Box>
+
+              <GenerateScriptDialog
+                open={generateDialogOpen}
+                onClose={() => setGenerateDialogOpen(false)}
+                ideaId={ideaId}
+                ideaTitle={idea.title}
+                onSuccess={handleScriptSuccess}
+              />
             </Grid>
 
             <Grid item xs={12} md={4}>

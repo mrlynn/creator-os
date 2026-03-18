@@ -111,11 +111,9 @@ export default function EditTagPage() {
     return (
       <Container>
         <Alert severity="error">Tag not found</Alert>
-        <Link href="/app/tags" passHref>
-          <Button sx={{ mt: 2 }} component="a">
-            Back to Tags
-          </Button>
-        </Link>
+        <Button sx={{ mt: 2 }} component={Link} href="/app/tags">
+          Back to Tags
+        </Button>
       </Container>
     );
   }
@@ -177,9 +175,7 @@ export default function EditTagPage() {
 
               <Stack direction="row" spacing={2} sx={{ mt: 2 }} justifyContent="space-between">
                 <Stack direction="row" spacing={2}>
-                  <Link href="/app/tags" passHref>
-                    <Button component="a">Back</Button>
-                  </Link>
+                  <Button component={Link} href="/app/tags">Back</Button>
                   <Button
                     type="submit"
                     variant="contained"

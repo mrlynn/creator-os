@@ -12,6 +12,92 @@ The platform collapses time-to-publish from days to hours by embedding AI at eve
 
 ---
 
+## Progress Tracking (Updated 2026-03-18)
+
+### MVP Summary
+
+| Priority | Feature | Status | Notes |
+|----------|---------|--------|-------|
+| 1 | Quick-capture idea form | ✅ Done | Title, description, platform, audience, format. No voice-to-text yet. |
+| 2 | Idea list with status pipeline | ✅ Done | Filter by status, platform, audience. |
+| 3 | Script editor with sections | ✅ Done | Accordion sections (hook, problem, solution, demo, cta, outro). |
+| 4 | AI script generator (outline → draft) | ✅ Done | GPT-4 structured output, countdown UI. |
+| 5 | Kanban board | ✅ Done | Editing statuses: not-started → recording → editing → done. |
+| 6 | Publishing record + calendar | 🔶 Partial | Publishing records exist; calendar view not built. |
+| 7 | NextAuth v5 auth | ✅ Done | Login, session, protected routes. |
+| 8 | AI usage logger | ✅ Done | `/api/ai-usage-logs` + usage-logger for script/hook gen. |
+
+### V1 Summary
+
+| Priority | Feature | Status | Notes |
+|----------|---------|--------|-------|
+| 9 | Hook Lab (5×5 platform hooks) | ✅ Done | YouTube + TikTok tabs, editable, separate save. |
+| 10 | Audience calibration toggle | ❌ Pending | |
+| 11 | Content Library (archive + browse) | ❌ Pending | |
+| 12 | Atlas Vector Search + semantic search | ❌ Pending | |
+| 13 | Auto-tagging on ingest | ❌ Pending | |
+| 14 | Series management | 🔶 Partial | Series model + API exist; no UI pages. |
+| 15 | Analytics metrics entry + charts | ❌ Pending | Sidebar link disabled. |
+| 16 | Topic performance heatmap | ❌ Pending | |
+| 17 | Repurposing engine (YouTube → TikTok) | ❌ Pending | |
+| 18 | Tag management system | ❌ Pending | Tag model exists. |
+| 19 | Prompt library + runner | ❌ Pending | |
+| 20 | Script version history + diff | ❌ Pending | |
+
+### End-to-End Flow (Working)
+
+```
+/app/ideas/new → Create idea
+    ↓
+/app/ideas/[id] → Create Script → /app/scripts/[id]
+    ↓
+Tab 0: Generate Script with AI (GPT-4) → 40s countdown
+    ↓
+Tab 1: Script Sections (hook, problem, solution, demo, cta, outro)
+    ↓
+Tab 2: Hook Lab → Generate 5 YT + 5 TikTok hooks → Save
+    ↓
+Create Episode → /app/pipeline
+    ↓
+Move through Kanban columns → Add publishing records
+```
+
+---
+
+## Next Sprint Plan (Sprint 2)
+
+**Goal:** Complete the Publishing Pipeline and unlock the first V1 Script Studio enhancement.
+
+### Sprint 2 Scope
+
+| # | Feature | Domain | Effort | Rationale |
+|---|---------|--------|--------|------------|
+| 1 | **Publishing calendar view** | Publishing Pipeline | Medium | Completes MVP #6; cadence accountability. |
+| 2 | **Audience calibration toggle** | Script Studio | Medium | V1 #10; high ROI — one-click Beginner/Advanced rewrite. |
+| 3 | **AI virality score on idea save** | Idea Bank | Small | Triggers GPT-4 score on POST; model already has fields. |
+| 4 | **Analytics page (basic)** | Analytics Dashboard | Medium | Enable sidebar link; metrics entry form + list. |
+
+### Sprint 2 Success Criteria
+
+- [ ] Calendar view shows episodes by scheduled/publish date
+- [ ] Script editor has Beginner/Advanced toggle; API rewrites script
+- [ ] New ideas get virality score after save (or via "Score" button)
+- [ ] Analytics page loads; can log metrics manually per episode
+
+### Optional (if time)
+
+- [ ] Voice-to-text on quick-capture (Web Speech API)
+- [ ] Loading skeletons for Ideas, Scripts, Pipeline list views
+
+### Out of Scope (Sprint 3+)
+
+- Content Library
+- Atlas Vector Search
+- Repurposing engine
+- Prompt library + runner
+
+---
+
 ## Phase 1 — Feature Domains & Architecture
 
 ### 1.1 Core Feature Domains

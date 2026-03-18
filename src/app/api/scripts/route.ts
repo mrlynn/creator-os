@@ -56,14 +56,20 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const q = searchParams.get('q')?.trim();
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
     const query: Record<string, any> = {};
     if (status) query.status = status;
+    if (q) {
+      query.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { outline: { $regex: q, $options: 'i' } },
+      ];
+    }
 
     const scripts = await Script.find(query)
-      .populate('ideaId')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -81,9 +87,14 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error fetching scripts:', error);
     return Response.json(
-      { error: 'Failed to fetch scripts', message: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to fetch scripts',
+        message,
+        ...(process.env.NODE_ENV === 'development' && error instanceof Error && { stack: error.stack }),
+      },
       { status: 500 }
     );
   }

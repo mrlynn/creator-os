@@ -3,6 +3,64 @@ import { logAiUsage } from './usage-logger';
 import { getProfileInstruction } from './instruction-profile';
 import { getRagContext } from './rag-retrieval';
 
+export async function generateOutlineFromIdea(idea: {
+  title: string;
+  description: string;
+  platform: string;
+  audience: string;
+  format: string;
+}): Promise<{ success: boolean; outline?: string; error?: string }> {
+  const client = getOpenAIClient();
+  const startTime = Date.now();
+
+  try {
+    const systemPrompt = `You are a content strategist for developer advocates. Given a content idea, create a brief bullet-point outline for a script. The outline should be 4-8 bullet points that will later be expanded into a full script with Hook, Problem, Solution, Demo, CTA, Outro. Keep each bullet concise (one line).`;
+
+    const userPrompt = `Create a script outline for this idea:
+
+Title: ${idea.title}
+Description: ${idea.description}
+Platform: ${idea.platform}
+Audience: ${idea.audience}
+Format: ${idea.format}
+
+Return only the bullet-point outline, one point per line. No preamble.`;
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.6,
+      max_tokens: 500,
+    });
+
+    const outline = response.choices[0].message.content?.trim() || '';
+    const duration = Date.now() - startTime;
+
+    logAiUsage({
+      category: 'script-generation',
+      tokensUsed: response.usage?.total_tokens || 0,
+      durationMs: duration,
+      success: true,
+    }).catch(console.error);
+
+    return { success: true, outline };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logAiUsage({
+      category: 'script-generation',
+      tokensUsed: 0,
+      durationMs: duration,
+      success: false,
+      errorMessage,
+    }).catch(console.error);
+    return { success: false, error: errorMessage };
+  }
+}
+
 export async function generateScriptFromOutline(
   outline: string,
   audienceLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',

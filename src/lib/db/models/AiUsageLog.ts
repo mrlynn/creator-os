@@ -9,7 +9,12 @@ export interface IAiUsageLog extends Document {
     | 'repurposing'
     | 'tagging'
     | 'seo-generation'
+    | 'evergreen-scoring'
+    | 'planner'
+    | 'insight-report'
+    | 'embedding'
     | 'prompt-run'
+    | 'news-research'
     | 'other';
   tokensUsed: number;
   durationMs: number;
@@ -35,7 +40,12 @@ const AiUsageLogSchema = new Schema<IAiUsageLog>(
         'repurposing',
         'tagging',
         'seo-generation',
+        'evergreen-scoring',
+        'planner',
+        'insight-report',
+        'embedding',
         'prompt-run',
+        'news-research',
         'other',
       ],
       required: true,

@@ -21,10 +21,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  IconButton,
 } from '@mui/material';
 import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { SearchField } from '@/components/shared-ui/SearchField';
 
 interface SeriesItem {
   _id: string;
@@ -39,6 +42,7 @@ export default function SeriesPage() {
   const [series, setSeries] = useState<SeriesItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('active');
+  const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -47,6 +51,7 @@ export default function SeriesPage() {
     try {
       const params = new URLSearchParams();
       params.append('status', status);
+      if (search.trim()) params.append('q', search.trim());
       const response = await fetch(`/api/series?${params}`);
       if (!response.ok) throw new Error('Failed to fetch series');
       const { data } = await response.json();
@@ -60,7 +65,19 @@ export default function SeriesPage() {
 
   useEffect(() => {
     fetchSeries();
-  }, [status]);
+  }, [status, search]);
+
+  const handleArchive = async (id: string) => {
+    if (!confirm('Archive this series?')) return;
+    try {
+      const res = await fetch(`/api/series/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to archive');
+      setSuccessMessage('Series archived');
+      fetchSeries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to archive');
+    }
+  };
 
   const STATUS_LABELS: Record<string, string> = {
     active: 'Active',
@@ -85,11 +102,9 @@ export default function SeriesPage() {
           <Typography variant="h3" component="h1">
             Series
           </Typography>
-          <Link href="/app/series/new" passHref>
-            <Button variant="contained" startIcon={<AddIcon />} component="a">
-              Add Series
-            </Button>
-          </Link>
+          <Button variant="contained" startIcon={<AddIcon />} component={Link} href="/app/series/new">
+            Add Series
+          </Button>
         </Box>
 
         {error && (
@@ -106,7 +121,8 @@ export default function SeriesPage() {
           message={successMessage}
         />
 
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
+          <SearchField value={search} onChange={setSearch} placeholder="Search series..." />
           <FormControl sx={{ minWidth: 150 }}>
             <InputLabel>Status</InputLabel>
             <Select
@@ -127,11 +143,9 @@ export default function SeriesPage() {
             <Typography color="textSecondary">
               No series yet. Create your first series to organize episodes.
             </Typography>
-            <Link href="/app/series/new" passHref>
-              <Button variant="outlined" sx={{ mt: 2 }} component="a">
-                Add Series
-              </Button>
-            </Link>
+            <Button variant="outlined" sx={{ mt: 2 }} component={Link} href="/app/series/new">
+              Add Series
+            </Button>
           </Paper>
         ) : (
           <TableContainer component={Paper}>
@@ -159,11 +173,18 @@ export default function SeriesPage() {
                     <TableCell>{STATUS_LABELS[s.status] || s.status}</TableCell>
                     <TableCell align="right">{s.episodeCount ?? 0}</TableCell>
                     <TableCell align="right">
-                      <Link href={`/app/series/${s._id}`} passHref>
-                        <Button size="small" startIcon={<VisibilityIcon />} component="a">
-                          View
-                        </Button>
-                      </Link>
+                      <Button size="small" startIcon={<VisibilityIcon />} component={Link} href={`/app/series/${s._id}`}>
+                        View
+                      </Button>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleArchive(s._id)}
+                        aria-label="Archive"
+                        sx={{ ml: 0.5 }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}

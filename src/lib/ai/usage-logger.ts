@@ -10,8 +10,13 @@ export async function logAiUsage(data: {
     | 'repurposing'
     | 'tagging'
     | 'seo-generation'
-    | 'prompt-run'
-    | 'other';
+    | 'evergreen-scoring'
+    | 'planner'
+    | 'insight-report'
+  | 'embedding'
+  | 'prompt-run'
+  | 'news-research'
+  | 'other';
   tokensUsed: number;
   durationMs: number;
   aiModel?: string;

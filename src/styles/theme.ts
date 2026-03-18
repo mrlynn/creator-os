@@ -82,6 +82,20 @@ export const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
+          minHeight: 44,
+          '@media (pointer: fine)': {
+            minHeight: 36,
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          padding: 10,
+          '@media (pointer: fine)': {
+            padding: 8,
+          },
         },
       },
     },

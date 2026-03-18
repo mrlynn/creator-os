@@ -1,6 +1,7 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { getServerSession } from '@/lib/auth';
 import { ContentIdea } from '@/lib/db/models/ContentIdea';
+import '@/lib/db/models/Tag'; // Ensure Tag model is registered for populate
 import { CreateIdeaSchema } from '@/lib/db/schemas';
 import { scoreVirality } from '@/lib/ai/virality-scorer';
 
@@ -51,9 +52,14 @@ export async function POST(request: Request) {
 
     return Response.json(idea, { status: 201 });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error creating idea:', error);
     return Response.json(
-      { error: 'Failed to create idea', message: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to create idea',
+        message,
+        ...(process.env.NODE_ENV === 'development' && error instanceof Error && { stack: error.stack }),
+      },
       { status: 500 }
     );
   }
@@ -72,6 +78,7 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const platform = searchParams.get('platform');
     const audience = searchParams.get('audience');
+    const q = searchParams.get('q')?.trim();
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
@@ -80,6 +87,12 @@ export async function GET(request: Request) {
     if (status) query.status = status;
     if (platform) query.platform = platform;
     if (audience) query.audience = audience;
+    if (q) {
+      query.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+      ];
+    }
 
     // Fetch ideas with pagination
     const ideas = await ContentIdea.find(query)
@@ -101,9 +114,15 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const stack = error instanceof Error ? error.stack : undefined;
     console.error('Error fetching ideas:', error);
     return Response.json(
-      { error: 'Failed to fetch ideas', message: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to fetch ideas',
+        message,
+        ...(process.env.NODE_ENV === 'development' && stack && { stack }),
+      },
       { status: 500 }
     );
   }

@@ -27,6 +27,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import Link from 'next/link';
 import { FormControlLabel, Checkbox } from '@mui/material';
+import { SearchField } from '@/components/shared-ui/SearchField';
 
 interface InstructionProfile {
   _id: string;
@@ -66,6 +67,8 @@ export default function AiToolkitPage() {
     isDefault: false,
   });
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [promptSearch, setPromptSearch] = useState('');
+  const [profileSearch, setProfileSearch] = useState('');
 
   const fetchProfiles = async () => {
     try {
@@ -296,6 +299,12 @@ export default function AiToolkitPage() {
         <Typography variant="h5" component="h2" sx={{ mb: 2, mt: 3 }}>
           Instruction Profiles
         </Typography>
+        <SearchField
+          value={profileSearch}
+          onChange={setProfileSearch}
+          placeholder="Search profiles..."
+          sx={{ mb: 2 }}
+        />
         <Paper sx={{ mb: 3 }}>
           {profileLoading ? (
             <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
@@ -317,7 +326,14 @@ export default function AiToolkitPage() {
             </Box>
           ) : (
             <List>
-              {profiles.map((p) => (
+              {profiles
+                .filter(
+                  (p) =>
+                    !profileSearch.trim() ||
+                    p.name.toLowerCase().includes(profileSearch.toLowerCase()) ||
+                    (p.instructionText || '').toLowerCase().includes(profileSearch.toLowerCase())
+                )
+                .map((p) => (
                 <ListItem key={p._id} divider>
                   <ListItemText
                     primary={
@@ -386,6 +402,12 @@ export default function AiToolkitPage() {
         <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
           Prompts
         </Typography>
+        <SearchField
+          value={promptSearch}
+          onChange={setPromptSearch}
+          placeholder="Search prompts..."
+          sx={{ mb: 2 }}
+        />
         <Paper>
           {prompts.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -403,7 +425,15 @@ export default function AiToolkitPage() {
             </Box>
           ) : (
             <List>
-              {prompts.map((p) => (
+              {prompts
+                .filter(
+                  (p) =>
+                    !promptSearch.trim() ||
+                    p.name.toLowerCase().includes(promptSearch.toLowerCase()) ||
+                    (p.template || '').toLowerCase().includes(promptSearch.toLowerCase()) ||
+                    (p.category || '').toLowerCase().includes(promptSearch.toLowerCase())
+                )
+                .map((p) => (
                 <ListItem key={p._id} divider>
                   <ListItemText
                     primary={p.name}

@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useGlobalSearch } from '@/components/shared-ui/GlobalSearchContext';
 import {
   Box,
   Drawer,
@@ -13,6 +14,8 @@ import {
   Typography,
   Divider,
 } from '@mui/material';
+
+type DrawerVariant = 'permanent' | 'temporary';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -24,6 +27,9 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SearchIcon from '@mui/icons-material/Search';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 
 const SIDEBAR_WIDTH = 220;
 
@@ -41,31 +47,59 @@ const navItems: { label: string; href: string; icon: React.ReactNode; disabled?:
   { label: 'Help', href: '/app/help', icon: <HelpOutlineIcon fontSize="small" /> },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  variant?: DrawerVariant;
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function AppSidebar({ variant = 'permanent', open = true, onClose }: AppSidebarProps) {
   const pathname = usePathname();
+  const globalSearch = useGlobalSearch();
+
+  const drawerSx = {
+    width: SIDEBAR_WIDTH,
+    flexShrink: 0,
+    '& .MuiDrawer-paper': {
+      width: SIDEBAR_WIDTH,
+      boxSizing: 'border-box',
+      borderRight: variant === 'permanent' ? '1px solid' : 'none',
+      borderColor: 'divider',
+      bgcolor: 'background.paper',
+      ...(variant === 'temporary' && {
+        top: 56,
+        height: 'calc(100vh - 56px)',
+      }),
+    },
+  };
 
   return (
     <Drawer
-      variant="permanent"
-      sx={{
-        width: SIDEBAR_WIDTH,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: SIDEBAR_WIDTH,
-          boxSizing: 'border-box',
-          borderRight: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        },
-      }}
+      variant={variant}
+      open={open}
+      onClose={onClose}
+      ModalProps={variant === 'temporary' ? { keepMounted: true } : undefined}
+      sx={drawerSx}
     >
-      <Box sx={{ px: 2, py: 2.5 }}>
+      <Box sx={{ px: 2, py: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography
           variant="h6"
           sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: '-0.3px' }}
         >
           Creator OS
         </Typography>
+        {globalSearch && (
+          <Tooltip title="Search (⌘K)">
+            <IconButton
+              size="small"
+              onClick={globalSearch.openSearch}
+              sx={{ color: 'text.secondary' }}
+              aria-label="Open search"
+            >
+              <SearchIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
 
       <Divider />
@@ -83,6 +117,7 @@ export function AppSidebar() {
                 href={item.disabled ? undefined : item.href}
                 disabled={item.disabled}
                 selected={isActive}
+                onClick={variant === 'temporary' ? onClose : undefined}
                 sx={{
                   borderRadius: 1.5,
                   py: 0.75,

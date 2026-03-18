@@ -14,9 +14,16 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const q = searchParams.get('q')?.trim();
 
-    const query: Record<string, string> = {};
+    const query: Record<string, any> = {};
     if (category) query.category = category;
+    if (q) {
+      query.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { slug: { $regex: q, $options: 'i' } },
+      ];
+    }
 
     const tags = await Tag.find(query).sort({ name: 1 }).lean();
 
