@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Container,
   Typography,
@@ -18,9 +19,16 @@ import {
   MenuItem,
   Alert,
   Snackbar,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PublishIcon from '@mui/icons-material/Publish';
+
+const CalendarView = dynamic(
+  () => import('@/components/pipeline/CalendarView').then((mod) => mod.CalendarView),
+  { ssr: false }
+);
 
 interface PublishingRecord {
   _id: string;
@@ -66,6 +74,7 @@ export default function PipelinePage() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState(0);
 
   // Publishing record dialog
   const [pubDialogOpen, setPubDialogOpen] = useState(false);
@@ -172,7 +181,7 @@ export default function PipelinePage() {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h3" component="h1">
             Publishing Pipeline
           </Typography>
@@ -180,6 +189,11 @@ export default function PipelinePage() {
             {episodes.length} episode{episodes.length !== 1 ? 's' : ''}
           </Typography>
         </Box>
+
+        <Tabs value={viewTab} onChange={(_, v) => setViewTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Tab label="Kanban" />
+          <Tab label="Calendar" />
+        </Tabs>
 
         <Snackbar
           open={!!successMessage}
@@ -251,7 +265,11 @@ export default function PipelinePage() {
           </DialogActions>
         </Dialog>
 
-        {episodes.length === 0 ? (
+        {viewTab === 1 ? (
+          <Paper sx={{ p: 2 }}>
+            <CalendarView />
+          </Paper>
+        ) : episodes.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
             <Typography color="textSecondary" gutterBottom>
               No episodes yet.
