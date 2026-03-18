@@ -12,6 +12,7 @@ import './PublishingRecord';
 import './AnalyticsSnapshot';
 import './AiUsageLog';
 import './Prompt';
+import './PlatformConnection';
 
 export { InstructionProfile } from './InstructionProfile';
 export { ContentIdea } from './ContentIdea';
@@ -23,3 +24,4 @@ export { PublishingRecord } from './PublishingRecord';
 export { AnalyticsSnapshot } from './AnalyticsSnapshot';
 export { AiUsageLog } from './AiUsageLog';
 export { Prompt } from './Prompt';
+export { PlatformConnection } from './PlatformConnection';

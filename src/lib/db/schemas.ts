@@ -88,6 +88,7 @@ export const UpdateEpisodeSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   thumbnailUrl: z.string().url().optional(),
+  seriesId: z.string().nullable().optional(),
   editingStatus: z.enum(['not-started', 'recording', 'editing', 'done']).optional(),
   publishingStatus: z.enum(['draft', 'scheduled', 'published', 'archived']).optional(),
   tags: z.array(z.string()).optional(),
@@ -154,6 +155,19 @@ export const UpdateSeriesSchema = CreateSeriesSchema.partial().extend({
   status: z.enum(['active', 'completed', 'archived']).optional(),
 });
 
+// PlatformConnection Schemas
+export const CreatePlatformConnectionSchema = z.object({
+  userId: z.string().min(1),
+  platform: z.enum(['youtube', 'tiktok']),
+  accessToken: z.string().min(1),
+  refreshToken: z.string().min(1),
+  expiresAt: z.coerce.date(),
+  platformUserId: z.string().min(1),
+  platformUsername: z.string().optional(),
+});
+
+export const UpdatePlatformConnectionSchema = CreatePlatformConnectionSchema.partial();
+
 // Export types
 export type CreateTagInput = z.infer<typeof CreateTagSchema>;
 export type UpdateTagInput = z.infer<typeof UpdateTagSchema>;
@@ -187,3 +201,5 @@ export type CreatePromptInput = z.infer<typeof CreatePromptSchema>;
 export type UpdatePromptInput = z.infer<typeof UpdatePromptSchema>;
 export type CreateSeriesInput = z.infer<typeof CreateSeriesSchema>;
 export type UpdateSeriesInput = z.infer<typeof UpdateSeriesSchema>;
+export type CreatePlatformConnectionInput = z.infer<typeof CreatePlatformConnectionSchema>;
+export type UpdatePlatformConnectionInput = z.infer<typeof UpdatePlatformConnectionSchema>;
