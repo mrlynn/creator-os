@@ -2,12 +2,12 @@
 
 ## Current Position
 
-Phase: sprint8
-Plan: 5 of 5
-Status: Sprint 8 complete
-Last activity: 2026-03-18 — Sprint 8 plans 01–05 executed
+Phase: sprint9
+Plan: 2 of 2 (Phase 1)
+Status: Sprint 9 Phase 1 complete
+Last activity: 2026-03-18 — Sprint 9 plans 01–02 executed (metadata export)
 
-Progress: [==========] 100% (sprint8)
+Progress: [==========] 100% (sprint9 Phase 1)
 
 ## Sprint 8 Plans (Creator Love)
 
@@ -20,6 +20,15 @@ Progress: [==========] 100% (sprint8)
 | 05 | Voice-to-text capture | ✅ 2068384 |
 
 See `.planning/phases/sprint8/PLAN.md` for details.
+
+## Sprint 9 Plans (Phase 1 — Metadata Export)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 01 | Metadata export (Library — Copy for YouTube, TikTok, JSON) | ✅ cd357a6 |
+| 02 | Pipeline card quick copy | ✅ c1bf105 |
+
+Plans 03–06 deferred (Phase 2: OAuth + upload).
 
 ---
 
@@ -67,4 +76,4 @@ See `.planning/phases/sprint5/sprint5-SUMMARY.md` for execution summary.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Sprint 8 complete (plans 01–05 executed)
+Stopped at: Sprint 9 Phase 1 complete (plans 01–02 executed)

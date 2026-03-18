@@ -27,11 +27,25 @@
 
 ## Future Sprints
 
-### Sprint 9: Publishing Integrations (Research)
+### Sprint 9: Publishing Integrations
 
-- **YouTube API** — OAuth, upload/schedule (research scope, API limits)
-- **TikTok API** — Creator Center API (research scope)
-- **Scope:** MVP = connect accounts, manual "Publish to YouTube" with metadata prefill
+**Phase 1 (MVP):** Metadata export — zero API dependency
+
+| Plan | Feature | Status |
+|------|---------|--------|
+| 01 | Metadata export (Library — Copy for YouTube, TikTok, JSON) | ✅ Done (cd357a6) |
+| 02 | Metadata export (Pipeline card quick copy) | ✅ Done (c1bf105) |
+
+**Phase 2 (Deferred):** OAuth + upload
+
+| Plan | Feature | Status |
+|------|---------|--------|
+| 03 | PlatformConnection model | Deferred |
+| 04 | YouTube OAuth connect | Deferred |
+| 05 | TikTok OAuth connect | Deferred |
+| 06 | Upload flow (private-only) | Deferred |
+
+**Plans:** 6 plans (01–02 execute first; 03–06 deferred)
 
 ### Sprint 10: Extended Capture
 
