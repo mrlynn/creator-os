@@ -9,6 +9,7 @@ export interface IAiUsageLog extends Document {
     | 'repurposing'
     | 'tagging'
     | 'seo-generation'
+    | 'prompt-run'
     | 'other';
   tokensUsed: number;
   durationMs: number;
@@ -34,6 +35,7 @@ const AiUsageLogSchema = new Schema<IAiUsageLog>(
         'repurposing',
         'tagging',
         'seo-generation',
+        'prompt-run',
         'other',
       ],
       required: true,

@@ -10,6 +10,7 @@ export async function logAiUsage(data: {
     | 'repurposing'
     | 'tagging'
     | 'seo-generation'
+    | 'prompt-run'
     | 'other';
   tokensUsed: number;
   durationMs: number;

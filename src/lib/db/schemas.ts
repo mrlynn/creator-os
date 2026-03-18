@@ -113,6 +113,19 @@ export const UpdateAnalyticsSnapshotSchema = z.object({
   clickThroughRate: z.number().optional(),
 });
 
+// Prompt Schemas
+export const CreatePromptSchema = z.object({
+  name: z.string().min(1).max(255),
+  template: z.string().min(1).max(50000),
+  category: z.string().max(100).optional(),
+});
+
+export const UpdatePromptSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  template: z.string().min(1).max(50000).optional(),
+  category: z.string().max(100).optional(),
+});
+
 // Series Schemas
 export const CreateSeriesSchema = z.object({
   title: z.string().min(1).max(255),
@@ -146,5 +159,7 @@ export type CreateAnalyticsSnapshotInput = z.infer<
 export type UpdateAnalyticsSnapshotInput = z.infer<
   typeof UpdateAnalyticsSnapshotSchema
 >;
+export type CreatePromptInput = z.infer<typeof CreatePromptSchema>;
+export type UpdatePromptInput = z.infer<typeof UpdatePromptSchema>;
 export type CreateSeriesInput = z.infer<typeof CreateSeriesSchema>;
 export type UpdateSeriesInput = z.infer<typeof UpdateSeriesSchema>;
