@@ -2,14 +2,28 @@
 
 ## Current Position
 
-Phase: sprint7
-Plan: 5 of 5 (Track A + B complete)
-Status: Sprint 7 complete
-Last activity: 2026-03-18 — Sprint 7 Track B plans 04–05 executed
+Phase: sprint8
+Plan: 5 of 5
+Status: Sprint 8 complete
+Last activity: 2026-03-18 — Sprint 8 plans 01–05 executed
 
-Progress: [██████████] 100% (sprint7)
+Progress: [==========] 100% (sprint8)
 
-## Sprint 7 Plans
+## Sprint 8 Plans (Creator Love)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 01 | Repurpose UX (Clip→Episode, timestamps, batch export) | ✅ eace09d, 668b676 |
+| 02 | Calendar improvements (nav to episode, gap detection) | ✅ c823d30 |
+| 03 | Loading skeletons | ✅ fbe2adc |
+| 04 | Keyboard shortcuts | ✅ 9bef73f |
+| 05 | Voice-to-text capture | ✅ 2068384 |
+
+See `.planning/phases/sprint8/PLAN.md` for details.
+
+---
+
+## Sprint 7 Plans (Complete)
 
 | Plan | Name | Track | Status |
 |------|------|-------|--------|
@@ -53,4 +67,4 @@ See `.planning/phases/sprint5/sprint5-SUMMARY.md` for execution summary.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Sprint 7 complete (plans 01–05 executed)
+Stopped at: Sprint 8 complete (plans 01–05 executed)
