@@ -7,6 +7,7 @@ export interface IEpisode extends Document {
   title: string;
   description?: string;
   thumbnailUrl?: string;
+  videoUrl?: string;
   recordingDate?: Date;
   editingStatus: 'not-started' | 'recording' | 'editing' | 'done';
   publishingStatus: 'draft' | 'scheduled' | 'published' | 'archived';
@@ -43,6 +44,7 @@ const EpisodeSchema = new Schema<IEpisode>(
     },
     description: String,
     thumbnailUrl: String,
+    videoUrl: String,
     recordingDate: Date,
     editingStatus: {
       type: String,

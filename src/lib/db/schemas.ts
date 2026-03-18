@@ -88,6 +88,7 @@ export const UpdateEpisodeSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   thumbnailUrl: z.string().url().optional(),
+  videoUrl: z.string().url().optional(),
   seriesId: z.string().nullable().optional(),
   editingStatus: z.enum(['not-started', 'recording', 'editing', 'done']).optional(),
   publishingStatus: z.enum(['draft', 'scheduled', 'published', 'archived']).optional(),

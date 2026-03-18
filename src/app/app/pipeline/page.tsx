@@ -29,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PublishIcon from '@mui/icons-material/Publish';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { SearchField } from '@/components/shared-ui/SearchField';
 import { ListSkeleton } from '@/components/shared-ui/ListSkeleton';
 
@@ -107,6 +108,13 @@ export default function PipelinePage() {
   } | null>(null);
   const [cadenceCheckLoading, setCadenceCheckLoading] = useState(false);
   const [cadenceWarnings, setCadenceWarnings] = useState<string[]>([]);
+  const [connections, setConnections] = useState<{ platform: string }[]>([]);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadEpisodeId, setUploadEpisodeId] = useState<string | null>(null);
+  const [uploadPlatform, setUploadPlatform] = useState<'youtube' | 'tiktok'>('youtube');
+  const [uploadVideoUrl, setUploadVideoUrl] = useState('');
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const fetchEpisodes = useCallback(async () => {
     try {
@@ -127,6 +135,49 @@ export default function PipelinePage() {
   useEffect(() => {
     fetchEpisodes();
   }, [fetchEpisodes]);
+
+  useEffect(() => {
+    fetch('/api/platform-connections')
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setConnections(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
+  const handleOpenUploadDialog = (episodeId: string, platform: 'youtube' | 'tiktok') => {
+    setUploadEpisodeId(episodeId);
+    setUploadPlatform(platform);
+    setUploadVideoUrl('');
+    setUploadError(null);
+    setUploadDialogOpen(true);
+  };
+
+  const handleUpload = async () => {
+    if (!uploadEpisodeId || !uploadVideoUrl.trim()) {
+      setUploadError('Enter a video URL');
+      return;
+    }
+    setUploadLoading(true);
+    setUploadError(null);
+    try {
+      const res = await fetch(`/api/episodes/${uploadEpisodeId}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: uploadPlatform, videoUrl: uploadVideoUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || 'Upload failed');
+      setSuccessMessage(`Uploaded to ${uploadPlatform === 'youtube' ? 'YouTube' : 'TikTok'}`);
+      setUploadDialogOpen(false);
+      fetchEpisodes();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const youtubeConnected = connections.some((c) => c.platform === 'youtube');
+  const tiktokConnected = connections.some((c) => c.platform === 'tiktok');
 
   const moveEpisode = async (episodeId: string, newStatus: string) => {
     try {
@@ -450,6 +501,40 @@ export default function PipelinePage() {
           </DialogActions>
         </Dialog>
 
+        <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Upload to {uploadPlatform === 'youtube' ? 'YouTube' : 'TikTok'}</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Video URL"
+                fullWidth
+                placeholder="https://..."
+                value={uploadVideoUrl}
+                onChange={(e) => setUploadVideoUrl(e.target.value)}
+                helperText="Public URL to the video file"
+              />
+              {uploadError && (
+                <Alert severity="error" onClose={() => setUploadError(null)}>
+                  {uploadError}
+                </Alert>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setUploadDialogOpen(false)} disabled={uploadLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={uploadLoading ? <CircularProgress size={16} color="inherit" /> : <CloudUploadIcon />}
+              onClick={handleUpload}
+              disabled={uploadLoading || !uploadVideoUrl.trim()}
+            >
+              {uploadLoading ? 'Uploading...' : 'Upload'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {loading && viewTab === 0 ? (
           <ListSkeleton variant="kanban" />
         ) : viewTab === 1 ? (
@@ -578,6 +663,26 @@ export default function PipelinePage() {
                           >
                             Publish
                           </Button>
+                          {youtubeConnected && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
+                              onClick={() => handleOpenUploadDialog(episode._id, 'youtube')}
+                            >
+                              Upload YT
+                            </Button>
+                          )}
+                          {tiktokConnected && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
+                              onClick={() => handleOpenUploadDialog(episode._id, 'tiktok')}
+                            >
+                              Upload TT
+                            </Button>
+                          )}
                         </Stack>
                       </Paper>
                     ))}

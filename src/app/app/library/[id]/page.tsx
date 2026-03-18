@@ -42,6 +42,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SearchIcon from '@mui/icons-material/Search';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 interface Tag {
   _id: string;
@@ -79,6 +80,11 @@ interface Episode {
   scriptId?: { _id: string } | string | null;
   publishingRecords?: PublishingRecord[];
   aiMetadata?: { evergreenScore?: number; evergreenReasoning?: string };
+  videoUrl?: string;
+}
+
+interface PlatformConnection {
+  platform: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -125,7 +131,16 @@ export default function EpisodeDetailPage() {
   const [seriesSaving, setSeriesSaving] = useState(false);
   const [seriesError, setSeriesError] = useState<string | null>(null);
   const [successSnackbar, setSuccessSnackbar] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Series updated');
   const [createFromClipLoading, setCreateFromClipLoading] = useState<number | null>(null);
+  const [connections, setConnections] = useState<PlatformConnection[]>([]);
+  const [uploadLoading, setUploadLoading] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadPlatform, setUploadPlatform] = useState<'youtube' | 'tiktok'>('youtube');
+  const [uploadVideoUrl, setUploadVideoUrl] = useState('');
+  const [videoUrlEdit, setVideoUrlEdit] = useState('');
+  const [videoUrlSaving, setVideoUrlSaving] = useState(false);
 
   const handleCreateEpisodeFromClip = async (clip: ClipConcept) => {
     setCreateFromClipLoading(clip.clipNumber);
@@ -246,6 +261,7 @@ export default function EpisodeDetailPage() {
         if (!response.ok) throw new Error('Failed to fetch episode');
         const data = await response.json();
         setEpisode(data);
+        setVideoUrlEdit(data.videoUrl || '');
         const sid = data.seriesId && typeof data.seriesId === 'object' ? data.seriesId._id : data.seriesId || '';
         setSeriesId(sid);
       } catch (err) {
@@ -272,6 +288,67 @@ export default function EpisodeDetailPage() {
     fetchSeries();
   }, []);
 
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const res = await fetch('/api/platform-connections');
+        if (res.ok) {
+          const data = await res.json();
+          setConnections(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        // Optional
+      }
+    };
+    fetchConnections();
+  }, []);
+
+  const doUpload = async (platform: 'youtube' | 'tiktok', videoUrl: string) => {
+    setUploadLoading(platform);
+    setUploadError(null);
+    try {
+      const res = await fetch(`/api/episodes/${id}/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, videoUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || 'Upload failed');
+      setSuccessMessage(`Uploaded to ${platform === 'youtube' ? 'YouTube' : 'TikTok'}`);
+      setSuccessSnackbar(true);
+      setUploadDialogOpen(false);
+      setUploadVideoUrl('');
+      const refetch = await fetch(`/api/episodes/${id}`);
+      if (refetch.ok) setEpisode(await refetch.json());
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadLoading(null);
+    }
+  };
+
+  const handleUpload = (platform: 'youtube' | 'tiktok') => {
+    const videoUrl = (uploadVideoUrl.trim() || episode?.videoUrl?.trim() || videoUrlEdit?.trim()) || '';
+    if (!videoUrl) {
+      setUploadPlatform(platform);
+      setUploadDialogOpen(true);
+      setUploadError(null);
+      return;
+    }
+    doUpload(platform, videoUrl);
+  };
+
+  const handleUploadFromDialog = () => {
+    if (!uploadVideoUrl.trim()) {
+      setUploadError('Enter a video URL');
+      return;
+    }
+    doUpload(uploadPlatform, uploadVideoUrl.trim());
+  };
+
+  const youtubeConnected = connections.some((c) => c.platform === 'youtube');
+  const tiktokConnected = connections.some((c) => c.platform === 'tiktok');
+
   const handleSeriesChange = async (newSeriesId: string) => {
     setSeriesId(newSeriesId);
     setSeriesError(null);
@@ -288,6 +365,7 @@ export default function EpisodeDetailPage() {
       }
       const updated = await res.json();
       setEpisode(updated);
+      setSuccessMessage('Series updated');
       setSuccessSnackbar(true);
     } catch (err) {
       setSeriesError(err instanceof Error ? err.message : 'Failed to update');
@@ -473,6 +551,97 @@ export default function EpisodeDetailPage() {
               </Button>
             </Stack>
           </Box>
+
+          {(youtubeConnected || tiktokConnected) && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Upload
+              </Typography>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <TextField
+                    size="small"
+                    label="Video URL"
+                    placeholder="https://..."
+                    value={videoUrlEdit}
+                    onChange={(e) => setVideoUrlEdit(e.target.value)}
+                    sx={{ minWidth: 280, flex: 1 }}
+                  />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={async () => {
+                      setVideoUrlSaving(true);
+                      try {
+                        const res = await fetch(`/api/episodes/${id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ videoUrl: videoUrlEdit.trim() || undefined }),
+                        });
+                        if (res.ok) {
+                          const updated = await res.json();
+                          setEpisode(updated);
+                          setSuccessMessage('Video URL saved');
+                          setSuccessSnackbar(true);
+                        }
+                      } finally {
+                        setVideoUrlSaving(false);
+                      }
+                    }}
+                    disabled={videoUrlSaving}
+                  >
+                    Save
+                  </Button>
+                </Stack>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                {youtubeConnected && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={
+                      uploadLoading === 'youtube' ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        <CloudUploadIcon />
+                      )
+                    }
+                    onClick={() => handleUpload('youtube')}
+                    disabled={uploadLoading !== null}
+                  >
+                    Upload to YouTube
+                  </Button>
+                )}
+                {tiktokConnected && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={
+                      uploadLoading === 'tiktok' ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        <CloudUploadIcon />
+                      )
+                    }
+                    onClick={() => handleUpload('tiktok')}
+                    disabled={uploadLoading !== null}
+                  >
+                    Upload to TikTok
+                  </Button>
+                )}
+                </Stack>
+              </Stack>
+              {uploadError && (
+                <Alert severity="error" sx={{ mt: 1 }} onClose={() => setUploadError(null)}>
+                  {uploadError}
+                </Alert>
+              )}
+              {!episode?.videoUrl && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  Add videoUrl to the episode or enter it when prompted.
+                </Typography>
+              )}
+            </Box>
+          )}
 
           {scriptId && (
             <Box>
@@ -717,6 +886,41 @@ export default function EpisodeDetailPage() {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Enter Video URL</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Video URL"
+                fullWidth
+                placeholder="https://..."
+                value={uploadVideoUrl}
+                onChange={(e) => setUploadVideoUrl(e.target.value)}
+                helperText="Public URL to the video file (e.g. from cloud storage)"
+              />
+              {uploadError && (
+                <Alert severity="error" onClose={() => setUploadError(null)}>
+                  {uploadError}
+                </Alert>
+              )}
+              <Button
+                variant="contained"
+                startIcon={
+                  uploadLoading ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <CloudUploadIcon />
+                  )
+                }
+                onClick={handleUploadFromDialog}
+                disabled={uploadLoading !== null || !uploadVideoUrl.trim()}
+              >
+                Upload to {uploadPlatform === 'youtube' ? 'YouTube' : 'TikTok'}
+              </Button>
+            </Stack>
+          </DialogContent>
+        </Dialog>
+
         <Snackbar
           open={copySnackbar}
           autoHideDuration={2000}
@@ -728,7 +932,7 @@ export default function EpisodeDetailPage() {
           open={successSnackbar}
           autoHideDuration={2000}
           onClose={() => setSuccessSnackbar(false)}
-          message="Series updated"
+          message={successMessage}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         />
 
