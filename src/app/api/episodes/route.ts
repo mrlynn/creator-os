@@ -56,12 +56,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const publishingStatus = searchParams.get('publishingStatus');
     const editingStatus = searchParams.get('editingStatus');
+    const seriesId = searchParams.get('seriesId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
     const query: Record<string, any> = {};
     if (publishingStatus) query.publishingStatus = publishingStatus;
     if (editingStatus) query.editingStatus = editingStatus;
+    if (seriesId && Types.ObjectId.isValid(seriesId)) {
+      query.seriesId = new Types.ObjectId(seriesId);
+    }
 
     const episodes = await Episode.find(query)
       .populate('ideaId')
