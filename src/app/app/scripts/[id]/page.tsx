@@ -22,6 +22,8 @@ import {
   DialogContent,
   DialogActions,
   MenuItem,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import { useParams, useRouter } from 'next/navigation';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -30,10 +32,12 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 
+type AudienceLevel = 'beginner' | 'advanced';
+
 interface Script {
   _id: string;
   title: string;
-  ideaId?: string | { _id: string };
+  ideaId?: string | { _id: string; audience?: string };
   outline?: string;
   hook?: string;
   problem?: string;
@@ -41,6 +45,8 @@ interface Script {
   demo?: string;
   cta?: string;
   outro?: string;
+  youtubeHooks?: string[];
+  tiktokHooks?: string[];
   status: string;
   wordCount: number;
 }
@@ -78,9 +84,15 @@ export default function ScriptDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [hookTabValue, setHookTabValue] = useState(0);
   const [formData, setFormData] = useState<Partial<Script>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [lastTokensUsed, setLastTokensUsed] = useState<number | null>(null);
+  const [generatingHooks, setGeneratingHooks] = useState(false);
+  const [hookError, setHookError] = useState<string | null>(null);
+  const [audience, setAudience] = useState<AudienceLevel>('beginner');
+  const [rewriting, setRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Episode creation dialog
@@ -98,6 +110,9 @@ export default function ScriptDetailPage() {
         const data = await response.json();
         setScript(data);
         setFormData(data);
+        const ideaAudience = data.ideaId?.audience;
+        if (ideaAudience === 'advanced') setAudience('advanced');
+        else if (ideaAudience === 'beginner' || ideaAudience === 'mixed' || ideaAudience === 'intermediate') setAudience('beginner');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -203,6 +218,36 @@ export default function ScriptDetailPage() {
     }
   };
 
+  const handleRewrite = async () => {
+    setRewriting(true);
+    setRewriteError(null);
+
+    try {
+      const response = await fetch(`/api/scripts/${scriptId}/rewrite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audience }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || 'Rewrite failed');
+      }
+
+      const result = await response.json();
+      const updated = result.script;
+      setScript(updated);
+      setFormData(updated);
+      setLastTokensUsed(result.generation?.tokensUsed || null);
+      setSuccessMessage(`Script rewritten for ${audience} audience`);
+      setTabValue(1);
+    } catch (err) {
+      setRewriteError(err instanceof Error ? err.message : 'Rewrite failed');
+    } finally {
+      setRewriting(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!formData.outline) {
       setGenerateError('Please provide an outline first');
@@ -228,7 +273,7 @@ export default function ScriptDetailPage() {
       const response = await fetch(`/api/scripts/${scriptId}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outline: formData.outline, audience: 'beginner' }),
+        body: JSON.stringify({ outline: formData.outline, audience }),
       });
 
       if (!response.ok) {
@@ -254,6 +299,83 @@ export default function ScriptDetailPage() {
       if (countdownRef.current) clearInterval(countdownRef.current);
       setGenerating(false);
       setGenerateCountdown(0);
+    }
+  };
+
+  const handleGenerateHooks = async () => {
+    if (!script || script.wordCount === 0) {
+      setHookError('Please generate a script first before creating hooks');
+      return;
+    }
+
+    setGeneratingHooks(true);
+    setHookError(null);
+
+    try {
+      const response = await fetch(`/api/scripts/${scriptId}/hooks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scriptContent: formData.hook || formData.problem || formData.solution || '',
+          audienceLevel: 'beginner',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate hooks');
+      }
+
+      const result = await response.json();
+      const updatedScript = {
+        ...script,
+        youtubeHooks: result.youtubeHooks,
+        tiktokHooks: result.tiktokHooks,
+      };
+
+      setScript(updatedScript);
+      setFormData(updatedScript);
+      setLastTokensUsed(result.generation?.tokensUsed || null);
+      setHookTabValue(0); // Show YouTube hooks first
+
+      const tokenMsg = result.generation?.tokensUsed
+        ? ` • ${result.generation.tokensUsed.toLocaleString()} tokens used`
+        : '';
+      setSuccessMessage(`Hooks generated!${tokenMsg}`);
+    } catch (err) {
+      setHookError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setGeneratingHooks(false);
+    }
+  };
+
+  const handleSaveHooks = async (platform: 'youtube' | 'tiktok') => {
+    const hooksField = platform === 'youtube' ? 'youtubeHooks' : 'tiktokHooks';
+    const hooksValue = platform === 'youtube' ? formData.youtubeHooks : formData.tiktokHooks;
+
+    if (!hooksValue || hooksValue.length === 0) {
+      setError('No hooks to save');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/scripts/${scriptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [hooksField]: hooksValue }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save hooks');
+
+      setSuccessMessage(`${platform === 'youtube' ? 'YouTube' : 'TikTok'} hooks saved`);
+      setTabValue(2); // Stay on hooks tab
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -369,6 +491,21 @@ export default function ScriptDetailPage() {
 
         <TabPanel value={tabValue} index={0}>
           <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 0.5 }}>
+                Audience
+              </Typography>
+              <ToggleButtonGroup
+                value={audience}
+                exclusive
+                onChange={(_, v) => v != null && setAudience(v)}
+                size="small"
+              >
+                <ToggleButton value="beginner">Beginner</ToggleButton>
+                <ToggleButton value="advanced">Advanced</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
             <TextField
               fullWidth
               label="Outline"
@@ -410,14 +547,32 @@ export default function ScriptDetailPage() {
               </Typography>
             )}
 
-            <Button
-              variant="contained"
-              startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighIcon />}
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? 'Generating...' : 'Generate Script with AI'}
-            </Button>
+            {rewriteError && (
+              <Alert severity="error" onClose={() => setRewriteError(null)}>
+                {rewriteError}
+              </Alert>
+            )}
+
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                variant="contained"
+                startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighIcon />}
+                onClick={handleGenerate}
+                disabled={generating}
+              >
+                {generating ? 'Generating...' : 'Generate Script with AI'}
+              </Button>
+              {script && script.wordCount > 0 && (
+                <Button
+                  variant="outlined"
+                  startIcon={rewriting ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
+                  onClick={handleRewrite}
+                  disabled={rewriting || generating}
+                >
+                  {rewriting ? 'Rewriting...' : `Rewrite for ${audience}`}
+                </Button>
+              )}
+            </Stack>
           </Stack>
         </TabPanel>
 
@@ -450,9 +605,130 @@ export default function ScriptDetailPage() {
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Typography variant="body2" color="textSecondary">
-            Hook generation coming soon. Save your script first, then generate hooks.
-          </Typography>
+          <Stack spacing={2}>
+            <Typography variant="h6" gutterBottom>
+              Hook Lab
+            </Typography>
+
+            <Typography variant="body2" color="textSecondary">
+              Generate 5 YouTube and 5 TikTok hooks for this script using AI.
+            </Typography>
+
+            {generatingHooks && (
+              <Box>
+                <LinearProgress sx={{ mb: 1 }} />
+                <Typography variant="body2" color="textSecondary" align="center">
+                  Generating hooks with GPT-4
+                </Typography>
+              </Box>
+            )}
+
+            {hookError && (
+              <Alert
+                severity="error"
+                action={
+                  <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={handleGenerateHooks}>
+                    Retry
+                  </Button>
+                }
+              >
+                {hookError}
+              </Alert>
+            )}
+
+            {!script || script.wordCount === 0 ? (
+              <Button
+                variant="contained"
+                size="large"
+                disabled={generatingHooks}
+                startIcon={generatingHooks ? <CircularProgress size={18} color="inherit" /> : <AutoFixHighIcon />}
+                onClick={handleGenerateHooks}
+              >
+                {generatingHooks ? 'Generating...' : 'Generate Hooks with AI'}
+              </Button>
+            ) : (
+              <Box>
+                <Tabs
+                  value={hookTabValue}
+                  onChange={(_, v) => setHookTabValue(v)}
+                  sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+                >
+                  <Tab label="YouTube Hooks" />
+                  <Tab label="TikTok Hooks" />
+                </Tabs>
+
+                {hookTabValue === 0 && (
+                  <Stack spacing={2}>
+                    {formData.youtubeHooks && formData.youtubeHooks.length > 0 ? (
+                      formData.youtubeHooks.map((hook, idx) => (
+                        <TextField
+                          key={idx}
+                          label={`YouTube Hook ${idx + 1}`}
+                          fullWidth
+                          multiline
+                          rows={2}
+                          value={hook}
+                          onChange={(e) => {
+                            const newHooks = [...(formData.youtubeHooks || [])];
+                            newHooks[idx] = e.target.value;
+                            setFormData((prev) => ({ ...prev, youtubeHooks: newHooks }));
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="textSecondary">
+                        No hooks generated yet. Click "Generate Hooks with AI" to create 5 YouTube hooks.
+                      </Typography>
+                    )}
+
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={() => handleSaveHooks('youtube')}
+                      disabled={saving}
+                    >
+                      {saving ? <CircularProgress size={20} /> : 'Save YouTube Hooks'}
+                    </Button>
+                  </Stack>
+                )}
+
+                {hookTabValue === 1 && (
+                  <Stack spacing={2}>
+                    {formData.tiktokHooks && formData.tiktokHooks.length > 0 ? (
+                      formData.tiktokHooks.map((hook, idx) => (
+                        <TextField
+                          key={idx}
+                          label={`TikTok Hook ${idx + 1}`}
+                          fullWidth
+                          multiline
+                          rows={2}
+                          value={hook}
+                          onChange={(e) => {
+                            const newHooks = [...(formData.tiktokHooks || [])];
+                            newHooks[idx] = e.target.value;
+                            setFormData((prev) => ({ ...prev, tiktokHooks: newHooks }));
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="textSecondary">
+                        No hooks generated yet. Click "Generate Hooks with AI" to create 5 TikTok hooks.
+                      </Typography>
+                    )}
+
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={() => handleSaveHooks('tiktok')}
+                      disabled={saving}
+                    >
+                      {saving ? <CircularProgress size={20} /> : 'Save TikTok Hooks'}
+                    </Button>
+                  </Stack>
+                )}
+              </Box>
+            )}
+          </Stack>
         </TabPanel>
       </Box>
     </Container>

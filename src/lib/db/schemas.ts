@@ -53,6 +53,10 @@ export const GenerateHooksSchema = z.object({
   audienceLevel: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
 });
 
+export const RewriteScriptSchema = z.object({
+  audience: z.enum(['beginner', 'advanced']),
+});
+
 // Episode Schemas
 export const CreateEpisodeSchema = z.object({
   ideaId: z.string().min(1),
