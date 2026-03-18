@@ -55,6 +55,8 @@ export default function SettingsPage() {
   useEffect(() => {
     const youtubeConnected = searchParams.get('youtube_connected');
     const youtubeError = searchParams.get('youtube_error');
+    const tiktokConnected = searchParams.get('tiktok_connected');
+    const tiktokError = searchParams.get('tiktok_error');
 
     if (youtubeConnected === '1') {
       setSnackbar('YouTube connected successfully');
@@ -66,6 +68,18 @@ export default function SettingsPage() {
     }
     if (youtubeError) {
       setError(`YouTube: ${decodeURIComponent(youtubeError)}`);
+      window.history.replaceState({}, '', '/app/settings');
+    }
+    if (tiktokConnected === '1') {
+      setSnackbar('TikTok connected successfully');
+      setConnections((prev) => {
+        if (prev.some((c) => c.platform === 'tiktok')) return prev;
+        return [...prev, { _id: 'temp', platform: 'tiktok' }];
+      });
+      window.history.replaceState({}, '', '/app/settings');
+    }
+    if (tiktokError) {
+      setError(`TikTok: ${decodeURIComponent(tiktokError)}`);
       window.history.replaceState({}, '', '/app/settings');
     }
   }, [searchParams]);
@@ -92,6 +106,7 @@ export default function SettingsPage() {
   };
 
   const youtubeConnected = connections.some((c) => c.platform === 'youtube');
+  const tiktokConnected = connections.some((c) => c.platform === 'tiktok');
 
   return (
     <Container maxWidth="md">
@@ -163,6 +178,52 @@ export default function SettingsPage() {
                     size="small"
                   >
                     Connect YouTube
+                  </Button>
+                )}
+              </Box>
+
+              <Box
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 1,
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle1">TikTok</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tiktokConnected ? 'Connected' : 'Not connected'}
+                  </Typography>
+                </Box>
+                {tiktokConnected ? (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={() => handleDisconnect('tiktok')}
+                    disabled={disconnectLoading === 'tiktok'}
+                    startIcon={
+                      disconnectLoading === 'tiktok' ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : undefined
+                    }
+                  >
+                    {disconnectLoading === 'tiktok' ? 'Disconnecting...' : 'Disconnect'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    component={Link}
+                    href="/api/auth/tiktok/connect"
+                    size="small"
+                  >
+                    Connect TikTok
                   </Button>
                 )}
               </Box>
