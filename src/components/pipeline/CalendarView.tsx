@@ -14,7 +14,7 @@ interface CalendarEvent {
   extendedProps: { episodeId: string; platform: string };
 }
 
-export function CalendarView() {
+export default function CalendarView() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -35,9 +35,17 @@ export function CalendarView() {
     []
   );
 
-  const handleEventClick = useCallback(() => {
-    router.push('/app/pipeline');
-  }, [router]);
+  const handleEventClick = useCallback(
+    (info: { event: { extendedProps?: { episodeId?: string } } }) => {
+      const episodeId = info?.event?.extendedProps?.episodeId;
+      if (episodeId) {
+        router.push(`/app/library/${episodeId}`);
+      } else {
+        router.push('/app/pipeline');
+      }
+    },
+    [router]
+  );
 
   return (
     <Box sx={{ position: 'relative' }}>

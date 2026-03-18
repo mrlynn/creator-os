@@ -31,27 +31,26 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Invalid parentEpisodeId' }, { status: 400 });
     }
 
-    const parentEpisode = await Episode.findById(parentEpisodeId)
-      .populate('ideaId')
-      .lean();
+    const parentEpisode = await Episode.findById(parentEpisodeId).lean();
 
     if (!parentEpisode) {
       return Response.json({ error: 'Episode not found' }, { status: 404 });
     }
 
-    const ideaId = parentEpisode.ideaId;
-    const ideaIdObj =
-      typeof ideaId === 'object' && ideaId !== null && '_id' in ideaId
-        ? (ideaId as { _id: Types.ObjectId })._id
-        : ideaId;
+    const rawIdeaId = (parentEpisode as { ideaId?: unknown }).ideaId;
+    const ideaIdStr =
+      rawIdeaId && typeof rawIdeaId === 'object' && '_id' in rawIdeaId
+        ? String((rawIdeaId as { _id: unknown })._id)
+        : String(rawIdeaId ?? '');
 
-    if (!ideaIdObj) {
+    if (!Types.ObjectId.isValid(ideaIdStr)) {
       return Response.json(
         { error: 'Parent episode has no linked idea' },
         { status: 400 }
       );
     }
 
+    const ideaIdObj = new Types.ObjectId(ideaIdStr);
     const conceptTitle =
       (clip.conceptTitle as string)?.trim() || 'Untitled Clip';
     const newHook = (clip.newHook as string)?.trim() || '';
