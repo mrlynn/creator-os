@@ -2,6 +2,7 @@ import { connectToDatabase } from '@/lib/db/connection';
 import { getServerSession } from '@/lib/auth';
 import { ContentIdea } from '@/lib/db/models/ContentIdea';
 import { CreateIdeaSchema } from '@/lib/db/schemas';
+import { scoreVirality } from '@/lib/ai/virality-scorer';
 
 export async function POST(request: Request) {
   try {
@@ -29,6 +30,24 @@ export async function POST(request: Request) {
       ...ideaData,
       tags: tagIds || [],
     });
+
+    // Fire-and-forget virality scoring (non-blocking)
+    void scoreVirality({
+      _id: idea._id.toString(),
+      title: idea.title,
+      description: idea.description,
+      platform: idea.platform,
+      audience: idea.audience,
+      format: idea.format,
+    }).then((result) => {
+      if (result.success && result.viralityScore != null) {
+        return ContentIdea.findByIdAndUpdate(idea._id, {
+          viralityScore: result.viralityScore,
+          viralityReasoning: result.viralityReasoning,
+        });
+      }
+      return undefined;
+    }).catch(console.error);
 
     return Response.json(idea, { status: 201 });
   } catch (error) {

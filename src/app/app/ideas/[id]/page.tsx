@@ -26,6 +26,7 @@ interface Idea {
   audience: string;
   format: string;
   viralityScore?: number;
+  viralityReasoning?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +42,8 @@ export default function IdeaDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [creatingScript, setCreatingScript] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
+  const [scoring, setScoring] = useState(false);
+  const [scoreError, setScoreError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchIdea = async () => {
@@ -59,6 +62,24 @@ export default function IdeaDetailPage() {
 
     fetchIdea();
   }, [ideaId]);
+
+  const handleScoreVirality = async () => {
+    setScoring(true);
+    setScoreError(null);
+    try {
+      const response = await fetch(`/api/ideas/${ideaId}/score`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || 'Failed to score');
+      }
+      const data = await response.json();
+      if (data.idea) setIdea(data.idea);
+    } catch (err) {
+      setScoreError(err instanceof Error ? err.message : 'Failed to score virality');
+    } finally {
+      setScoring(false);
+    }
+  };
 
   const handleCreateScript = async () => {
     setCreatingScript(true);
@@ -182,14 +203,40 @@ export default function IdeaDetailPage() {
                   {new Date(idea.createdAt).toLocaleDateString()}
                 </Typography>
 
-                {idea.viralityScore !== undefined && (
-                  <>
-                    <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>
-                      Virality Score
+                <Box sx={{ mt: 2 }}>
+                  {scoreError && (
+                    <Alert severity="error" sx={{ mb: 1 }} onClose={() => setScoreError(null)}>
+                      {scoreError}
+                    </Alert>
+                  )}
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Virality Score
+                  </Typography>
+                  {idea.viralityScore !== undefined ? (
+                    <>
+                      <Typography variant="h6">{idea.viralityScore}/100</Typography>
+                      {idea.viralityReasoning && (
+                        <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
+                          {idea.viralityReasoning}
+                        </Typography>
+                      )}
+                    </>
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">
+                      Not scored yet
                     </Typography>
-                    <Typography variant="h6">{idea.viralityScore}/100</Typography>
-                  </>
-                )}
+                  )}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    sx={{ mt: 1 }}
+                    onClick={handleScoreVirality}
+                    disabled={scoring}
+                    startIcon={scoring ? <CircularProgress size={14} color="inherit" /> : undefined}
+                  >
+                    {scoring ? 'Scoring...' : 'Score'}
+                  </Button>
+                </Box>
               </Paper>
             </Grid>
           </Grid>
