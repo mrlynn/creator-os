@@ -20,6 +20,7 @@ import {
   TextField,
 } from '@mui/material';
 import Link from 'next/link';
+import SemanticSearchBar from '@/components/library/SemanticSearchBar';
 
 interface Tag {
   _id: string;
@@ -149,6 +150,10 @@ export default function LibraryPage() {
             {error}
           </Alert>
         )}
+
+        <Box sx={{ mb: 3 }}>
+          <SemanticSearchBar />
+        </Box>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
           <FormControl sx={{ minWidth: 150 }}>
