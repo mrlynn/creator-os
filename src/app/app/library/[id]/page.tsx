@@ -27,8 +27,11 @@ import {
   AccordionDetails,
   IconButton,
   Snackbar,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -36,6 +39,9 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SearchIcon from '@mui/icons-material/Search';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 interface Tag {
   _id: string;
@@ -59,6 +65,7 @@ interface ClipConcept {
   script: string;
   onScreenTextSuggestions?: string[];
   whyItStandsAlone: string;
+  timestampRange?: { start: string; end: string };
 }
 
 interface Episode {
@@ -71,6 +78,7 @@ interface Episode {
   tags?: Tag[];
   scriptId?: { _id: string } | string | null;
   publishingRecords?: PublishingRecord[];
+  aiMetadata?: { evergreenScore?: number; evergreenReasoning?: string };
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -86,6 +94,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function EpisodeDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
 
   const [episode, setEpisode] = useState<Episode | null>(null);
@@ -97,6 +106,56 @@ export default function EpisodeDetailPage() {
   const [clips, setClips] = useState<ClipConcept[]>([]);
   const [repurposePlatform, setRepurposePlatform] = useState('tiktok');
   const [copySnackbar, setCopySnackbar] = useState(false);
+  const [copySnackbarMessage, setCopySnackbarMessage] = useState('Copied to clipboard');
+  const [seoLoading, setSeoLoading] = useState(false);
+  const [seoError, setSeoError] = useState<string | null>(null);
+  const [seoData, setSeoData] = useState<{
+    titles: string[];
+    recommendedTitle: string;
+    description: string;
+    tags: string[];
+  } | null>(null);
+  const [seoOpen, setSeoOpen] = useState(false);
+  const [evergreenLoading, setEvergreenLoading] = useState(false);
+  const [evergreenError, setEvergreenError] = useState<string | null>(null);
+  const [evergreenScore, setEvergreenScore] = useState<number | null>(null);
+  const [evergreenReasoning, setEvergreenReasoning] = useState<string | null>(null);
+  const [seriesList, setSeriesList] = useState<{ _id: string; title: string }[]>([]);
+  const [seriesId, setSeriesId] = useState<string>('');
+  const [seriesSaving, setSeriesSaving] = useState(false);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
+  const [successSnackbar, setSuccessSnackbar] = useState(false);
+  const [createFromClipLoading, setCreateFromClipLoading] = useState<number | null>(null);
+
+  const handleCreateEpisodeFromClip = async (clip: ClipConcept) => {
+    setCreateFromClipLoading(clip.clipNumber);
+    try {
+      const res = await fetch('/api/episodes/from-clip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parentEpisodeId: id,
+          clip: {
+            conceptTitle: clip.conceptTitle,
+            newHook: clip.newHook,
+            script: clip.script,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create episode');
+      const newId = data.episode?._id;
+      if (newId) {
+        router.push(`/app/library/${newId}`);
+      } else {
+        router.push('/app/pipeline');
+      }
+    } catch (err) {
+      setRepurposeError(err instanceof Error ? err.message : 'Failed to create episode');
+    } finally {
+      setCreateFromClipLoading(null);
+    }
+  };
 
   const handleRepurpose = async () => {
     setRepurposeLoading(true);
@@ -119,9 +178,65 @@ export default function EpisodeDetailPage() {
   };
 
   const copyClipContent = (clip: ClipConcept) => {
-    const text = `# ${clip.conceptTitle}\n\nHook: ${clip.newHook}\n\n${clip.script}`;
+    const ts = clip.timestampRange
+      ? `\nTimestamp: ${clip.timestampRange.start} – ${clip.timestampRange.end}\n`
+      : '';
+    const text = `# ${clip.conceptTitle}${ts}\nHook: ${clip.newHook}\n\n${clip.script}`;
+    navigator.clipboard.writeText(text);
+    setCopySnackbarMessage('Copied to clipboard');
+    setCopySnackbar(true);
+  };
+
+  const copyAllClips = () => {
+    const lines = clips.map((clip) => {
+      const ts = clip.timestampRange
+        ? `\nTimestamp: ${clip.timestampRange.start} – ${clip.timestampRange.end}\n`
+        : '';
+      return `# ${clip.clipNumber}. ${clip.conceptTitle}${ts}\nHook: ${clip.newHook}\n\n${clip.script}`;
+    });
+    const text = lines.join('\n\n---\n\n');
+    navigator.clipboard.writeText(text);
+    setCopySnackbarMessage(`Copied ${clips.length} clips to clipboard`);
+    setCopySnackbar(true);
+  };
+
+  const handleGenerateSeo = async () => {
+    setSeoLoading(true);
+    setSeoError(null);
+    setSeoData(null);
+    try {
+      const res = await fetch(`/api/episodes/${id}/seo`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate SEO');
+      setSeoData(data);
+    } catch (err) {
+      setSeoError(err instanceof Error ? err.message : 'Failed to generate SEO');
+    } finally {
+      setSeoLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopySnackbar(true);
+  };
+
+  const handleScoreEvergreen = async () => {
+    setEvergreenLoading(true);
+    setEvergreenError(null);
+    setEvergreenScore(null);
+    setEvergreenReasoning(null);
+    try {
+      const res = await fetch(`/api/episodes/${id}/evergreen`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to score evergreen');
+      setEvergreenScore(data.evergreenScore);
+      setEvergreenReasoning(data.reasoning);
+    } catch (err) {
+      setEvergreenError(err instanceof Error ? err.message : 'Failed to score evergreen');
+    } finally {
+      setEvergreenLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -131,6 +246,8 @@ export default function EpisodeDetailPage() {
         if (!response.ok) throw new Error('Failed to fetch episode');
         const data = await response.json();
         setEpisode(data);
+        const sid = data.seriesId && typeof data.seriesId === 'object' ? data.seriesId._id : data.seriesId || '';
+        setSeriesId(sid);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
@@ -139,6 +256,45 @@ export default function EpisodeDetailPage() {
     };
     fetchEpisode();
   }, [id]);
+
+  useEffect(() => {
+    const fetchSeries = async () => {
+      try {
+        const res = await fetch('/api/series?status=all');
+        if (res.ok) {
+          const { data } = await res.json();
+          setSeriesList(data || []);
+        }
+      } catch {
+        // Optional
+      }
+    };
+    fetchSeries();
+  }, []);
+
+  const handleSeriesChange = async (newSeriesId: string) => {
+    setSeriesId(newSeriesId);
+    setSeriesError(null);
+    setSeriesSaving(true);
+    try {
+      const res = await fetch(`/api/episodes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId: newSeriesId || null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update series');
+      }
+      const updated = await res.json();
+      setEpisode(updated);
+      setSuccessSnackbar(true);
+    } catch (err) {
+      setSeriesError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setSeriesSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -207,16 +363,42 @@ export default function EpisodeDetailPage() {
         )}
 
         <Stack spacing={2} sx={{ mb: 3 }}>
-          {series && (
-            <Box>
-              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                Series
-              </Typography>
-              <Button component={Link} href={`/app/series/${series._id}`} size="small">
-                {series.title}
+          <Box>
+            <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+              Series
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel>Series</InputLabel>
+              <Select
+                value={seriesId}
+                onChange={(e) => handleSeriesChange(e.target.value)}
+                label="Series"
+                disabled={seriesSaving}
+              >
+                <MenuItem value="">None</MenuItem>
+                {seriesList.map((s) => (
+                  <MenuItem key={s._id} value={s._id}>
+                    {s.title}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {series && (
+              <Button
+                component={Link}
+                href={`/app/series/${series._id}`}
+                size="small"
+                sx={{ ml: 1, verticalAlign: 'middle' }}
+              >
+                View Series
               </Button>
-            </Box>
-          )}
+            )}
+            {seriesError && (
+              <Alert severity="error" sx={{ mt: 1 }} onClose={() => setSeriesError(null)}>
+                {seriesError}
+              </Alert>
+            )}
+          </Box>
 
           {episode.tags && episode.tags.length > 0 && (
             <Box>
@@ -256,10 +438,123 @@ export default function EpisodeDetailPage() {
             </Box>
           )}
 
+          <Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                startIcon={<SearchIcon />}
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  setSeoOpen(true);
+                  setSeoError(null);
+                  setSeoData(null);
+                }}
+              >
+                Generate SEO
+              </Button>
+              <Button
+                startIcon={<TrendingUpIcon />}
+                size="small"
+                variant="outlined"
+                onClick={handleScoreEvergreen}
+                disabled={evergreenLoading}
+              >
+                {evergreenLoading ? 'Scoring...' : 'Score Evergreen'}
+              </Button>
+            </Stack>
+            {evergreenError && (
+              <Alert severity="error" sx={{ mt: 1 }} onClose={() => setEvergreenError(null)}>
+                {evergreenError}
+              </Alert>
+            )}
+            {((evergreenScore != null && evergreenReasoning) ||
+              (episode.aiMetadata?.evergreenScore != null && episode.aiMetadata?.evergreenReasoning)) && (
+              <Box sx={{ mt: 1, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Typography variant="subtitle2">
+                  Evergreen Score: {(evergreenScore ?? episode.aiMetadata?.evergreenScore) ?? 0}/100
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {evergreenReasoning ?? episode.aiMetadata?.evergreenReasoning ?? ''}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
           <Button startIcon={<BarChartIcon />} component={Link} href="/app/analytics" size="small">
             Analytics
           </Button>
         </Stack>
+
+        <Dialog open={seoOpen} onClose={() => setSeoOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Generate SEO</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Button
+                variant="contained"
+                startIcon={seoLoading ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
+                onClick={handleGenerateSeo}
+                disabled={seoLoading}
+              >
+                {seoLoading ? 'Generating...' : 'Generate SEO'}
+              </Button>
+              {seoError && (
+                <Alert severity="error" onClose={() => setSeoError(null)}>
+                  {seoError}
+                </Alert>
+              )}
+              {seoData && (
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Recommended Title
+                    </Typography>
+                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {seoData.recommendedTitle}
+                      <IconButton size="small" onClick={() => copyToClipboard(seoData.recommendedTitle)} aria-label="Copy">
+                        <ContentCopyIcon fontSize="small" />
+                      </IconButton>
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      All Title Options
+                    </Typography>
+                    <Stack spacing={0.5}>
+                      {seoData.titles.map((t, i) => (
+                        <Typography key={i} variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {t}
+                          <IconButton size="small" onClick={() => copyToClipboard(t)} aria-label="Copy">
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                        </Typography>
+                      ))}
+                    </Stack>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Description
+                    </Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {seoData.description}
+                    </Typography>
+                    <IconButton size="small" onClick={() => copyToClipboard(seoData.description)} aria-label="Copy">
+                      <ContentCopyIcon fontSize="small" /> Copy
+                    </IconButton>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Tags
+                    </Typography>
+                    <Typography variant="body2">{seoData.tags.join(', ')}</Typography>
+                    <IconButton size="small" onClick={() => copyToClipboard(seoData.tags.join(', '))} aria-label="Copy">
+                      <ContentCopyIcon fontSize="small" /> Copy
+                    </IconButton>
+                  </Box>
+                </Stack>
+              )}
+            </Stack>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={repurposeOpen} onClose={() => setRepurposeOpen(false)} maxWidth="md" fullWidth>
           <DialogTitle>Repurpose for Short-Form</DialogTitle>
@@ -291,7 +586,17 @@ export default function EpisodeDetailPage() {
               )}
               {clips.length > 0 && (
                 <Stack spacing={1}>
-                  <Typography variant="subtitle2">Clip Concepts</Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                    <Typography variant="subtitle2">Clip Concepts</Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<ContentCopyIcon />}
+                      onClick={copyAllClips}
+                    >
+                      Copy All Clips
+                    </Button>
+                  </Stack>
                   {clips.map((clip) => (
                     <Accordion key={clip.clipNumber}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -312,6 +617,11 @@ export default function EpisodeDetailPage() {
                       </AccordionSummary>
                       <AccordionDetails>
                         <Stack spacing={1}>
+                          {clip.timestampRange && (
+                            <Typography variant="caption" color="textSecondary">
+                              Timestamp: {clip.timestampRange.start} – {clip.timestampRange.end}
+                            </Typography>
+                          )}
                           <Typography variant="body2">
                             <strong>Hook:</strong> {clip.newHook}
                           </Typography>
@@ -321,6 +631,21 @@ export default function EpisodeDetailPage() {
                           <Typography variant="caption" color="textSecondary">
                             {clip.estimatedDuration} • {clip.whyItStandsAlone}
                           </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={
+                              createFromClipLoading === clip.clipNumber ? (
+                                <CircularProgress size={16} color="inherit" />
+                              ) : (
+                                <AddCircleOutlineIcon />
+                              )
+                            }
+                            onClick={() => handleCreateEpisodeFromClip(clip)}
+                            disabled={createFromClipLoading !== null}
+                          >
+                            Create Episode
+                          </Button>
                         </Stack>
                       </AccordionDetails>
                     </Accordion>
@@ -335,7 +660,14 @@ export default function EpisodeDetailPage() {
           open={copySnackbar}
           autoHideDuration={2000}
           onClose={() => setCopySnackbar(false)}
-          message="Copied to clipboard"
+          message={copySnackbarMessage}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
+        <Snackbar
+          open={successSnackbar}
+          autoHideDuration={2000}
+          onClose={() => setSuccessSnackbar(false)}
+          message="Series updated"
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         />
 
