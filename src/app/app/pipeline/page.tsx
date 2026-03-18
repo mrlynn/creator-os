@@ -26,6 +26,7 @@ import {
   Select,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PublishIcon from '@mui/icons-material/Publish';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { SearchField } from '@/components/shared-ui/SearchField';
@@ -47,9 +48,11 @@ interface PublishingRecord {
 interface Episode {
   _id: string;
   title: string;
+  description?: string;
   editingStatus: string;
   publishingStatus: string;
   ideaId?: { title: string };
+  tags?: { _id: string; name: string }[];
   publishingRecords?: PublishingRecord[];
 }
 
@@ -80,6 +83,7 @@ export default function PipelinePage() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [copySnackbar, setCopySnackbar] = useState(false);
   const [viewTab, setViewTab] = useState(0);
   const [editingFilter, setEditingFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -376,6 +380,13 @@ export default function PipelinePage() {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
           message={successMessage}
         />
+        <Snackbar
+          open={copySnackbar}
+          autoHideDuration={2000}
+          onClose={() => setCopySnackbar(false)}
+          message="Copied metadata"
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
 
         {/* Publishing Record Dialog */}
         <Dialog open={pubDialogOpen} onClose={() => setPubDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -530,7 +541,7 @@ export default function PipelinePage() {
                           </Stack>
                         )}
 
-                        <Stack direction="row" spacing={0.5} sx={{ mt: 1 }}>
+                        <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} alignItems="center">
                           {status !== 'done' && (
                             <Button
                               size="small"
@@ -545,6 +556,20 @@ export default function PipelinePage() {
                               Next
                             </Button>
                           )}
+                          <Button
+                            size="small"
+                            variant="text"
+                            startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+                            onClick={() => {
+                              const desc = episode.description || '';
+                              const tagList = (episode.tags || []).map((t) => t.name).join(', ');
+                              const text = [episode.title, desc, tagList ? `Tags: ${tagList}` : ''].filter(Boolean).join('\n\n');
+                              navigator.clipboard.writeText(text);
+                              setCopySnackbar(true);
+                            }}
+                          >
+                            Copy
+                          </Button>
                           <Button
                             size="small"
                             variant="text"
