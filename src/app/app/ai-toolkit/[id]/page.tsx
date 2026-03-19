@@ -87,7 +87,7 @@ export default function PromptRunnerPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="md">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -97,7 +97,7 @@ export default function PromptRunnerPage() {
 
   if (!prompt) {
     return (
-      <Container>
+      <Container maxWidth="md">
         <Alert severity="error">Prompt not found</Alert>
         <Button sx={{ mt: 2 }} component={Link} href="/app/ai-toolkit" startIcon={<ArrowBackIcon />}>
           Back to AI Toolkit

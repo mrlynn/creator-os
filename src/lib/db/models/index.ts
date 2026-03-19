@@ -13,6 +13,8 @@ import './AnalyticsSnapshot';
 import './AiUsageLog';
 import './Prompt';
 import './PlatformConnection';
+import './AppConfig';
+import './NewsResearchCache';
 
 export { InstructionProfile } from './InstructionProfile';
 export { ContentIdea } from './ContentIdea';
@@ -25,3 +27,5 @@ export { AnalyticsSnapshot } from './AnalyticsSnapshot';
 export { AiUsageLog } from './AiUsageLog';
 export { Prompt } from './Prompt';
 export { PlatformConnection } from './PlatformConnection';
+export { AppConfig } from './AppConfig';
+export { NewsResearchCache } from './NewsResearchCache';

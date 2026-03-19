@@ -120,21 +120,17 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
       return Response.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    const script = await Script.findByIdAndUpdate(
-      params.id,
-      { status: 'archived' },
-      { new: true }
-    );
+    const script = await Script.findByIdAndDelete(params.id);
 
     if (!script) {
       return Response.json({ error: 'Script not found' }, { status: 404 });
     }
 
-    return Response.json({ message: 'Script archived successfully', script });
+    return Response.json({ message: 'Script deleted successfully' });
   } catch (error) {
-    console.error('Error archiving script:', error);
+    console.error('Error deleting script:', error);
     return Response.json(
-      { error: 'Failed to archive script', message: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to delete script', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

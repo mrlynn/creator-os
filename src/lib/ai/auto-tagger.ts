@@ -1,19 +1,15 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { Episode } from '@/lib/db/models/Episode';
 import { Tag } from '@/lib/db/models/Tag';
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
+import { getAppConfig } from '@/lib/config/app-config';
 import { Types } from 'mongoose';
-
-const MAX_TEXT_CHARS = 500;
 
 export async function autoTagEpisode(
   episodeId: string,
   profileId?: string | null
 ): Promise<void> {
-  const start = Date.now();
-
   try {
     await connectToDatabase();
 
@@ -40,11 +36,14 @@ export async function autoTagEpisode(
         ].filter(Boolean) as string[]
       : [];
 
+    const config = await getAppConfig();
+    const maxTextChars = config.tunables.autoTaggerMaxTextChars;
+
     const scriptText = sections.join('\n\n');
     const fullText = `${episode.title}\n\n${scriptText}`.trim();
     const text =
-      fullText.length > MAX_TEXT_CHARS
-        ? fullText.slice(0, MAX_TEXT_CHARS) + '...'
+      fullText.length > maxTextChars
+        ? fullText.slice(0, maxTextChars) + '...'
         : fullText;
 
     if (!text.trim()) return;
@@ -56,22 +55,18 @@ export async function autoTagEpisode(
       ? `${profilePrefix}\n\n${baseSystem}`
       : baseSystem;
 
-    const client = getOpenAIClient();
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages: [
-        {
-          role: 'system',
-          content: systemContent,
-        },
+        { role: 'system', content: systemContent },
         { role: 'user', content: text },
       ],
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 200,
+      maxTokens: 200,
+      category: 'tagging',
     });
 
-    const content = res.choices[0].message?.content || '{}';
+    const content = res.content || '{}';
     let parsed: { tags?: string[] };
     try {
       parsed = JSON.parse(content);
@@ -108,27 +103,7 @@ export async function autoTagEpisode(
     }
 
     await Episode.findByIdAndUpdate(episodeId, { $set: { tags: tagIds } });
-
-    logAiUsage({
-      category: 'tagging',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-      relatedDocumentId: episode._id,
-      relatedDocumentType: 'Episode',
-    }).catch(console.error);
   } catch (err) {
     console.error('Auto-tag failed:', err);
-    logAiUsage({
-      category: 'tagging',
-      tokensUsed: 0,
-      durationMs: Date.now() - start,
-      success: false,
-      errorMessage: err instanceof Error ? err.message : 'Unknown error',
-      ...(Types.ObjectId.isValid(episodeId) && {
-        relatedDocumentId: episodeId,
-        relatedDocumentType: 'Episode',
-      }),
-    }).catch(console.error);
   }
 }

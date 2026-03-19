@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type AiUsageProvider = 'openai' | 'voyage' | 'ollama';
+
 export interface IAiUsageLog extends Document {
   category:
     | 'script-generation'
@@ -17,14 +19,17 @@ export interface IAiUsageLog extends Document {
     | 'news-research'
     | 'other';
   tokensUsed: number;
+  promptTokens?: number;
+  completionTokens?: number;
   durationMs: number;
   aiModel: string;
+  provider?: AiUsageProvider;
   costEstimate?: number;
   relatedDocumentId?: mongoose.Types.ObjectId;
   relatedDocumentType?: string;
   success: boolean;
   errorMessage?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
 }
 
@@ -54,6 +59,8 @@ const AiUsageLogSchema = new Schema<IAiUsageLog>(
       type: Number,
       required: true,
     },
+    promptTokens: Number,
+    completionTokens: Number,
     durationMs: {
       type: Number,
       required: true,
@@ -61,6 +68,10 @@ const AiUsageLogSchema = new Schema<IAiUsageLog>(
     aiModel: {
       type: String,
       default: 'gpt-4-turbo',
+    },
+    provider: {
+      type: String,
+      enum: ['openai', 'voyage', 'ollama'],
     },
     costEstimate: Number,
     relatedDocumentId: mongoose.Schema.Types.ObjectId,
@@ -72,11 +83,12 @@ const AiUsageLogSchema = new Schema<IAiUsageLog>(
     errorMessage: String,
     metadata: mongoose.Schema.Types.Mixed,
   },
-  { timestamps: false }
+  { timestamps: true }
 );
 
 AiUsageLogSchema.index({ category: 1 });
 AiUsageLogSchema.index({ createdAt: -1 });
+AiUsageLogSchema.index({ provider: 1 });
 AiUsageLogSchema.index({ relatedDocumentId: 1 });
 
 export const AiUsageLog =

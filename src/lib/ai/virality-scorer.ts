@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 
 const ViralityResponseSchema = z.object({
@@ -22,9 +21,6 @@ export async function scoreVirality(
   | { success: true; viralityScore: number; viralityReasoning: string }
   | { success: false; error: string }
 > {
-  const client = getOpenAIClient();
-  const start = Date.now();
-
   try {
     const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
     const baseSystem =
@@ -33,13 +29,9 @@ export async function scoreVirality(
       ? `${profilePrefix}\n\n${baseSystem}`
       : baseSystem;
 
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages: [
-        {
-          role: 'system',
-          content: systemContent,
-        },
+        { role: 'system', content: systemContent },
         {
           role: 'user',
           content: JSON.stringify({
@@ -51,23 +43,15 @@ export async function scoreVirality(
           }),
         },
       ],
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 300,
+      maxTokens: 300,
+      category: 'virality-scoring',
     });
 
-    const text = res.choices[0].message?.content || '{}';
+    const text = res.content || '{}';
     const parsed = JSON.parse(text);
     const validated = ViralityResponseSchema.parse(parsed);
-
-    logAiUsage({
-      category: 'virality-scoring',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-      relatedDocumentId: idea._id,
-      relatedDocumentType: 'ContentIdea',
-    }).catch(console.error);
 
     return {
       success: true,
@@ -76,16 +60,6 @@ export async function scoreVirality(
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    logAiUsage({
-      category: 'virality-scoring',
-      tokensUsed: 0,
-      durationMs: Date.now() - start,
-      success: false,
-      errorMessage,
-      relatedDocumentId: idea._id,
-      relatedDocumentType: 'ContentIdea',
-    }).catch(console.error);
-
     return { success: false, error: errorMessage };
   }
 }

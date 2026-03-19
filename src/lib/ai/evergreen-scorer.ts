@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 
 const EvergreenResponseSchema = z.object({
@@ -19,9 +18,6 @@ export async function scoreEvergreen(
   | { success: true; evergreenScore: number; reasoning: string }
   | { success: false; error: string }
 > {
-  const client = getOpenAIClient();
-  const start = Date.now();
-
   const inputText = [
     episode.title,
     episode.scriptText ? episode.scriptText.slice(0, 500) : '',
@@ -41,33 +37,21 @@ export async function scoreEvergreen(
       ? `${profilePrefix}\n\n${baseSystem}`
       : baseSystem;
 
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages: [
-        {
-          role: 'system',
-          content: systemContent,
-        },
+        { role: 'system', content: systemContent },
         { role: 'user', content: inputText },
       ],
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 300,
+      maxTokens: 300,
+      category: 'evergreen-scoring',
     });
 
-    const text = res.choices[0].message?.content || '{}';
+    const text = res.content || '{}';
     const stripped = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(stripped);
     const validated = EvergreenResponseSchema.parse(parsed);
-
-    logAiUsage({
-      category: 'evergreen-scoring',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-      relatedDocumentId: episode._id,
-      relatedDocumentType: 'Episode',
-    }).catch(console.error);
 
     return {
       success: true,
@@ -76,16 +60,6 @@ export async function scoreEvergreen(
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    logAiUsage({
-      category: 'evergreen-scoring',
-      tokensUsed: 0,
-      durationMs: Date.now() - start,
-      success: false,
-      errorMessage,
-      relatedDocumentId: episode._id,
-      relatedDocumentType: 'Episode',
-    }).catch(console.error);
-
     return { success: false, error: errorMessage };
   }
 }

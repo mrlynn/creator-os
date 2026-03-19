@@ -99,7 +99,7 @@ export default function EditTagPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="sm">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -109,7 +109,7 @@ export default function EditTagPage() {
 
   if (!formData._id) {
     return (
-      <Container>
+      <Container maxWidth="sm">
         <Alert severity="error">Tag not found</Alert>
         <Button sx={{ mt: 2 }} component={Link} href="/app/tags">
           Back to Tags

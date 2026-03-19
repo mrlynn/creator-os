@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import {
   Container,
   Typography,
@@ -597,9 +597,8 @@ export default function PipelinePage() {
                   md: `repeat(${EDITING_STATUSES.length}, 1fr)`,
                 },
                 gap: 2,
-                overflowX: 'auto',
                 pb: 1,
-                WebkitOverflowScrolling: 'touch',
+                overflow: 'visible',
               }}
             >
               {EDITING_STATUSES.map((status) => {
@@ -623,18 +622,20 @@ export default function PipelinePage() {
                           {columnEpisodes.map((episode, index) => (
                             <Draggable key={episode._id} draggableId={episode._id} index={index}>
                               {(dragProvided) => (
-                                <Paper
+                                <div
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   {...dragProvided.dragHandleProps}
-                                  sx={{
-                                    p: 1.5,
-                                    bgcolor: 'white',
-                                    '&:hover': { boxShadow: 2 },
-                                    cursor: 'grab',
-                                    '&:active': { cursor: 'grabbing' },
-                                  }}
                                 >
+                                  <Paper
+                                    sx={{
+                                      p: 1.5,
+                                      bgcolor: 'white',
+                                      '&:hover': { boxShadow: 2 },
+                                      cursor: 'grab',
+                                      '&:active': { cursor: 'grabbing' },
+                                    }}
+                                  >
                                   <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
                                     {episode.title}
                                   </Typography>
@@ -725,6 +726,7 @@ export default function PipelinePage() {
                                     )}
                                   </Stack>
                                 </Paper>
+                                </div>
                               )}
                             </Draggable>
                           ))}

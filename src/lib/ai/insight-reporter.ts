@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 
 const ReportResponseSchema = z.object({
@@ -33,9 +32,6 @@ export async function generateWeeklyReport(
     }
   | { success: false; error: string }
 > {
-  const client = getOpenAIClient();
-  const start = Date.now();
-
   const userContent = `Week of: ${params.weekOf}
 
 This week's performance data:
@@ -54,31 +50,21 @@ Generate a weekly performance report. Return valid JSON: { "headline": string, "
       ? `${profilePrefix}\n\n${baseSystem}`
       : baseSystem;
 
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages: [
-        {
-          role: 'system',
-          content: systemContent,
-        },
+        { role: 'system', content: systemContent },
         { role: 'user', content: userContent },
       ],
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       temperature: 0.5,
-      max_tokens: 1000,
+      maxTokens: 1000,
+      category: 'insight-report',
     });
 
-    const text = res.choices[0].message?.content || '{}';
+    const text = res.content || '{}';
     const stripped = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(stripped);
     const validated = ReportResponseSchema.parse(parsed);
-
-    logAiUsage({
-      category: 'insight-report',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-    }).catch(console.error);
 
     return {
       success: true,
@@ -93,14 +79,6 @@ Generate a weekly performance report. Return valid JSON: { "headline": string, "
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    logAiUsage({
-      category: 'insight-report',
-      tokensUsed: 0,
-      durationMs: Date.now() - start,
-      success: false,
-      errorMessage,
-    }).catch(console.error);
-
     return { success: false, error: errorMessage };
   }
 }

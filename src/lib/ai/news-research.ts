@@ -1,8 +1,111 @@
 /**
  * News research: fetch news, YouTube trending, and TikTok viral topics.
+ * Raw fetched data is cached by topic with configurable TTL to reduce external API calls.
  */
 
 import { google } from 'googleapis';
+import { connectToDatabase } from '@/lib/db/connection';
+import { NewsResearchCache } from '@/lib/db/models/NewsResearchCache';
+import { getAppConfig } from '@/lib/config/app-config';
+
+export interface NewsResearchData {
+  newsItems: { title: string; snippet: string }[];
+  youtubeItems: { title: string; snippet: string; viewCount?: string }[];
+  tiktokItems: { title: string; snippet: string }[];
+  cached: boolean;
+  fetchedAt: Date;
+}
+
+/** Normalize topics to a stable cache key (sorted, lowercased, joined) */
+function topicKey(topics: string[]): string {
+  return topics
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join('|');
+}
+
+/**
+ * Fetch news, YouTube, and TikTok data. Uses MongoDB cache when available and not expired.
+ * Cache TTL is configured via tunables.newsResearchCacheHours (default 6).
+ */
+export async function fetchResearchDataWithCache(
+  topics: string[]
+): Promise<NewsResearchData> {
+  if (topics.length === 0) {
+    return {
+      newsItems: [],
+      youtubeItems: [],
+      tiktokItems: [],
+      cached: false,
+      fetchedAt: new Date(),
+    };
+  }
+
+  await connectToDatabase();
+  const config = await getAppConfig();
+  const cacheHours = config.tunables.newsResearchCacheHours ?? 6;
+  const key = topicKey(topics);
+
+  const cached = await NewsResearchCache.findOne({
+    topicKey: key,
+    expiresAt: { $gt: new Date() },
+  })
+    .lean()
+    .exec();
+
+  if (cached) {
+    const doc = cached as unknown as {
+      newsItems?: { title: string; snippet: string; viewCount?: string }[];
+      youtubeItems?: { title: string; snippet: string; viewCount?: string }[];
+      tiktokItems?: { title: string; snippet: string }[];
+      fetchedAt: Date;
+    };
+    return {
+      newsItems: doc.newsItems ?? [],
+      youtubeItems: (doc.youtubeItems ?? []).map((i) => ({
+        title: i.title,
+        snippet: i.snippet,
+        viewCount: i.viewCount,
+      })),
+      tiktokItems: doc.tiktokItems ?? [],
+      cached: true,
+      fetchedAt: doc.fetchedAt,
+    };
+  }
+
+  const [newsItems, youtubeItems, tiktokItems] = await Promise.all([
+    fetchNewsForTopics(topics).catch(() => [] as { title: string; snippet: string }[]),
+    fetchYouTubeTrending(topics),
+    fetchTikTokTrendNews(topics),
+  ]);
+
+  const fetchedAt = new Date();
+  const expiresAt = new Date(fetchedAt.getTime() + cacheHours * 60 * 60 * 1000);
+
+  await NewsResearchCache.findOneAndUpdate(
+    { topicKey: key },
+    {
+      $set: {
+        topicKey: key,
+        newsItems,
+        youtubeItems,
+        tiktokItems,
+        fetchedAt,
+        expiresAt,
+      },
+    },
+    { upsert: true }
+  );
+
+  return {
+    newsItems,
+    youtubeItems,
+    tiktokItems,
+    cached: false,
+    fetchedAt,
+  };
+}
 
 const GOOGLE_NEWS_RSS = 'https://news.google.com/rss/search';
 

@@ -1,11 +1,9 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { embed } from '@/lib/ai/embeddings';
+import { getAppConfig } from '@/lib/config/app-config';
 import { ContentIdea } from '@/lib/db/models/ContentIdea';
 import { Script } from '@/lib/db/models/Script';
 import { Episode } from '@/lib/db/models/Episode';
-
-const MAX_TOTAL_CHARS = 1500;
-const EXCERPT_CHARS = 200;
 
 type RagType = 'idea' | 'episode' | 'script';
 
@@ -22,7 +20,7 @@ interface RagDoc {
   outline?: string;
 }
 
-function getExcerpt(doc: RagDoc, type: RagType): string {
+function getExcerpt(doc: RagDoc, type: RagType, excerptChars: number): string {
   let text = '';
   if (type === 'idea') {
     text = [doc.title, doc.description].filter(Boolean).join(' ');
@@ -42,8 +40,8 @@ function getExcerpt(doc: RagDoc, type: RagType): string {
   } else {
     text = [doc.title, doc.description].filter(Boolean).join(' ');
   }
-  if (text.length <= EXCERPT_CHARS) return text;
-  return text.slice(0, EXCERPT_CHARS).trim() + '…';
+  if (text.length <= excerptChars) return text;
+  return text.slice(0, excerptChars).trim() + '…';
 }
 
 export async function getRagContext(
@@ -55,10 +53,14 @@ export async function getRagContext(
 
   await connectToDatabase();
 
+  const config = await getAppConfig();
+  const { maxTotalChars, excerptChars, numCandidatesBase, numCandidatesMultiplier } =
+    config.rag;
+
   const queryEmbedding = await embed(query, { inputType: 'query' });
   if (!queryEmbedding || queryEmbedding.length === 0) return '';
 
-  const numCandidates = Math.max(100, limit * 20);
+  const numCandidates = Math.max(numCandidatesBase, limit * numCandidatesMultiplier);
 
   const runVectorSearch = async (
     Model: typeof ContentIdea | typeof Script | typeof Episode,
@@ -115,9 +117,9 @@ export async function getRagContext(
 
   for (const { doc, type } of top) {
     const title = doc.title || `(${type})`;
-    const excerpt = getExcerpt(doc, type);
+    const excerpt = getExcerpt(doc, type, excerptChars);
     const line = `- [${title}]: ${excerpt}`;
-    if (totalChars + line.length + 2 > MAX_TOTAL_CHARS) break;
+    if (totalChars + line.length + 2 > maxTotalChars) break;
     lines.push(line);
     totalChars += line.length + 1;
   }

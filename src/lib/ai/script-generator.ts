@@ -1,5 +1,4 @@
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 import { getRagContext } from './rag-retrieval';
 
@@ -10,9 +9,6 @@ export async function generateOutlineFromIdea(idea: {
   audience: string;
   format: string;
 }): Promise<{ success: boolean; outline?: string; error?: string }> {
-  const client = getOpenAIClient();
-  const startTime = Date.now();
-
   try {
     const systemPrompt = `You are a content strategist for developer advocates. Given a content idea, create a brief bullet-point outline for a script. The outline should be 4-8 bullet points that will later be expanded into a full script with Hook, Problem, Solution, Demo, CTA, Outro. Keep each bullet concise (one line).`;
 
@@ -26,37 +22,20 @@ Format: ${idea.format}
 
 Return only the bullet-point outline, one point per line. No preamble.`;
 
-    const response = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const result = await llmChat({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.6,
-      max_tokens: 500,
+      maxTokens: 500,
+      category: 'script-generation',
     });
 
-    const outline = response.choices[0].message.content?.trim() || '';
-    const duration = Date.now() - startTime;
-
-    logAiUsage({
-      category: 'script-generation',
-      tokensUsed: response.usage?.total_tokens || 0,
-      durationMs: duration,
-      success: true,
-    }).catch(console.error);
-
+    const outline = result.content.trim() || '';
     return { success: true, outline };
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logAiUsage({
-      category: 'script-generation',
-      tokensUsed: 0,
-      durationMs: duration,
-      success: false,
-      errorMessage,
-    }).catch(console.error);
     return { success: false, error: errorMessage };
   }
 }
@@ -67,9 +46,6 @@ export async function generateScriptFromOutline(
   profileId?: string | null,
   options?: { includeRag?: boolean; ragLimit?: number }
 ) {
-  const client = getOpenAIClient();
-  const startTime = Date.now();
-
   try {
     const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
     const ragContext =
@@ -110,28 +86,18 @@ Format the response with these exact markers on new lines:
 [CTA]
 [OUTRO]`;
 
-    const response = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const result = await llmChat({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      maxTokens: 2000,
+      category: 'script-generation',
     });
 
-    const content = response.choices[0].message.content || '';
-    const duration = Date.now() - startTime;
+    const content = result.content;
 
-    // Fire-and-forget logging
-    logAiUsage({
-      category: 'script-generation',
-      tokensUsed: response.usage?.total_tokens || 0,
-      durationMs: duration,
-      success: true,
-    }).catch(console.error);
-
-    // Parse sections
     const sections = {
       hook: extractSection(content, 'HOOK'),
       problem: extractSection(content, 'PROBLEM'),
@@ -145,25 +111,15 @@ Format the response with these exact markers on new lines:
       success: true,
       script: content,
       sections,
-      tokensUsed: response.usage?.total_tokens || 0,
-      durationMs: duration,
+      tokensUsed: result.tokensUsed,
+      durationMs: result.durationMs,
     };
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    logAiUsage({
-      category: 'script-generation',
-      tokensUsed: 0,
-      durationMs: duration,
-      success: false,
-      errorMessage,
-    }).catch(console.error);
-
     return {
       success: false,
       error: errorMessage,
-      durationMs: duration,
+      durationMs: 0,
     };
   }
 }

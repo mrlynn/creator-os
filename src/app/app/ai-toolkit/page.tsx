@@ -260,7 +260,7 @@ export default function AiToolkitPage() {
 
   if (loading || profileLoading) {
     return (
-      <Container>
+      <Container maxWidth="md">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>

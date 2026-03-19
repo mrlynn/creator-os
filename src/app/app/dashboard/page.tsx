@@ -101,11 +101,18 @@ export default function DashboardPage() {
           <>
             <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} sm={4}>
-                <Paper sx={{ p: 3, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+                <Paper
+                  sx={{
+                    p: 3,
+                    background: 'linear-gradient(135deg, #8A2BE2 0%, #D946EF 50%, #6D28D9 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 14px -2px rgba(138, 43, 226, 0.25), 0 2px 6px -2px rgba(0,0,0,0.1)',
+                  }}
+                >
                   <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
                     {stats.ideasCount}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body1" sx={{ opacity: 0.95 }}>
                     Total Ideas
                   </Typography>
                 </Paper>

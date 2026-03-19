@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import {
   Box,
@@ -63,9 +64,18 @@ export default function LoginPage() {
           gap: 3,
         }}
       >
-        <Typography variant="h3" component="h1" gutterBottom>
-          Creator OS
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <Image
+            src="/creatoros.png"
+            alt="Creator OS"
+            width={80}
+            height={80}
+            style={{ objectFit: 'contain' }}
+          />
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
+            Creator OS
+          </Typography>
+        </Box>
         <Typography variant="body1" color="textSecondary" align="center">
           AI & Developer Content Creation Platform
         </Typography>

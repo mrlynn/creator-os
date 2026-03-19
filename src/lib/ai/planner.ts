@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 
 const PlannerItemSchema = z.object({
@@ -37,9 +36,6 @@ export async function generateWeeklyPlan(
     }
   | { success: false; error: string }
 > {
-  const client = getOpenAIClient();
-  const start = Date.now();
-
   const userContent = `Publishing targets: 3 YouTube videos/week + 5 TikToks/week
 Week of: ${params.weekOf}
 
@@ -59,31 +55,21 @@ Create an optimal week plan. Return valid JSON: { "youtube": [{ "day": string, "
       ? `${profilePrefix}\n\n${baseSystem}`
       : baseSystem;
 
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages: [
-        {
-          role: 'system',
-          content: systemContent,
-        },
+        { role: 'system', content: systemContent },
         { role: 'user', content: userContent },
       ],
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       temperature: 0.5,
-      max_tokens: 1500,
+      maxTokens: 1500,
+      category: 'planner',
     });
 
-    const text = res.choices[0].message?.content || '{}';
+    const text = res.content || '{}';
     const stripped = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(stripped);
     const validated = PlannerResponseSchema.parse(parsed);
-
-    logAiUsage({
-      category: 'planner',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-    }).catch(console.error);
 
     return {
       success: true,
@@ -96,14 +82,6 @@ Create an optimal week plan. Return valid JSON: { "youtube": [{ "day": string, "
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    logAiUsage({
-      category: 'planner',
-      tokensUsed: 0,
-      durationMs: Date.now() - start,
-      success: false,
-      errorMessage,
-    }).catch(console.error);
-
     return { success: false, error: errorMessage };
   }
 }

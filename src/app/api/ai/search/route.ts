@@ -4,6 +4,7 @@ import { ContentIdea } from '@/lib/db/models/ContentIdea';
 import { Script } from '@/lib/db/models/Script';
 import { Episode } from '@/lib/db/models/Episode';
 import { embed } from '@/lib/ai/embeddings';
+import { getAppConfig } from '@/lib/config/app-config';
 import { z } from 'zod';
 
 const SearchBodySchema = z.object({
@@ -12,8 +13,8 @@ const SearchBodySchema = z.object({
     .array(z.enum(['idea', 'episode', 'script']))
     .optional()
     .default(['idea', 'episode', 'script']),
-  limit: z.number().min(1).max(50).optional().default(10),
-  mode: z.enum(['vector', 'hybrid']).optional().default('vector'),
+  limit: z.number().min(1).max(50).optional(),
+  mode: z.enum(['vector', 'hybrid']).optional(),
 });
 
 export async function POST(request: Request) {
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
+    const config = await getAppConfig();
+    const defaultLimit = config.tunables.searchDefaultLimit;
+    const defaultMode = config.tunables.searchDefaultMode;
+
     const body = await request.json().catch(() => ({}));
     const parseResult = SearchBodySchema.safeParse(body);
     if (!parseResult.success) {
@@ -34,7 +39,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { query, types, limit, mode } = parseResult.data;
+    const { query, types } = parseResult.data;
+    const limit = parseResult.data.limit ?? defaultLimit;
+    const mode = parseResult.data.mode ?? defaultMode;
     const queryEmbedding = await embed(query, { inputType: 'query' });
 
     if (!queryEmbedding || queryEmbedding.length === 0) {
@@ -44,13 +51,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const numCandidates = Math.max(100, limit * 20);
+    const numCandidates = Math.max(
+      config.rag.numCandidatesBase,
+      limit * config.rag.numCandidatesMultiplier
+    );
     const RRF_K = 60;
+    const dims = config.embeddings.dimensions;
+    const indexSuffix = dims === 768 ? '_768' : '';
 
     const runVectorSearch = async (
       Model: typeof ContentIdea | typeof Script | typeof Episode,
-      indexName: string
+      baseIndexName: string
     ) => {
+      const indexName = baseIndexName + indexSuffix;
       try {
         const results = await Model.aggregate([
           {

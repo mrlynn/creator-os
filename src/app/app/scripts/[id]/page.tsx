@@ -446,7 +446,7 @@ export default function ScriptDetailPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -456,7 +456,7 @@ export default function ScriptDetailPage() {
 
   if (!script) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Typography color="error">Script not found</Typography>
       </Container>
     );

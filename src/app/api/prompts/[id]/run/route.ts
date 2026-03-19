@@ -1,8 +1,7 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { getServerSession } from '@/lib/auth';
 import { Prompt } from '@/lib/db/models/Prompt';
-import { getOpenAIClient } from '@/lib/ai/openai-client';
-import { logAiUsage } from '@/lib/ai/usage-logger';
+import { llmChat } from '@/lib/ai/llm-provider';
 import { getProfileInstruction } from '@/lib/ai/instruction-profile';
 import { getRagContext } from '@/lib/ai/rag-retrieval';
 import { Types } from 'mongoose';
@@ -60,28 +59,14 @@ export async function POST(
         ]
       : [{ role: 'user' as const, content: userContent }];
 
-    const client = getOpenAIClient();
-    const start = Date.now();
-
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages,
       temperature: 0.7,
-      max_tokens: 4000,
+      maxTokens: 4000,
+      category: 'prompt-run',
     });
 
-    const output = res.choices[0].message?.content ?? '';
-
-    logAiUsage({
-      category: 'prompt-run',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-      relatedDocumentId: prompt._id,
-      relatedDocumentType: 'Prompt',
-    }).catch(console.error);
-
-    return Response.json({ output });
+    return Response.json({ output: res.content });
   } catch (error) {
     console.error('Error running prompt:', error);
     return Response.json(

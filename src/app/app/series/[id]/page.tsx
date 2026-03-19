@@ -133,7 +133,7 @@ export default function SeriesDetailPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -143,7 +143,7 @@ export default function SeriesDetailPage() {
 
   if (!series) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Alert severity="error">Series not found</Alert>
         <Button sx={{ mt: 2 }} component={Link} href="/app/series" startIcon={<ArrowBackIcon />}>
           Back to Series

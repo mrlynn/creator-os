@@ -1,10 +1,7 @@
 import { getServerSession } from '@/lib/auth';
-import { getOpenAIClient } from '@/lib/ai/openai-client';
-import { logAiUsage } from '@/lib/ai/usage-logger';
+import { llmChat } from '@/lib/ai/llm-provider';
 import {
-  fetchNewsForTopics,
-  fetchTikTokTrendNews,
-  fetchYouTubeTrending,
+  fetchResearchDataWithCache,
   type NewsResearchResult,
 } from '@/lib/ai/news-research';
 import { z } from 'zod';
@@ -35,14 +32,9 @@ export async function POST(request: Request) {
       return Response.json({ error: 'At least one topic required' }, { status: 400 });
     }
 
-    const startTime = Date.now();
-
-    // Fetch from all sources in parallel
-    const [newsItems, youtubeItems, tiktokItems] = await Promise.all([
-      fetchNewsForTopics(trimmedTopics).catch(() => [] as { title: string; snippet: string }[]),
-      fetchYouTubeTrending(trimmedTopics),
-      fetchTikTokTrendNews(trimmedTopics),
-    ]);
+    // Fetch from all sources (cached when available and not expired)
+    const { newsItems, youtubeItems, tiktokItems, cached, fetchedAt } =
+      await fetchResearchDataWithCache(trimmedTopics);
 
     const sections: string[] = [];
     if (newsItems.length > 0) {
@@ -70,7 +62,6 @@ export async function POST(request: Request) {
     }
     const context = sections.length > 0 ? sections.join('\n\n') : null;
 
-    const client = getOpenAIClient();
     const systemPrompt = `You are a content strategist for developer advocates. Given news, popular YouTube videos, and TikTok viral trend coverage, create a short summary and 1-2 content ideas suitable for YouTube, TikTok, or long-form content. Prioritize ideas that tap into what's already going viral.
 
 Format your response exactly as:
@@ -91,28 +82,21 @@ format: tutorial|story|demo|interview|other
       ? `Topics: ${trimmedTopics.join(', ')}\n\n${context}\n\nSummarize what's trending and create content ideas that could ride these trends.`
       : `Topics: ${trimmedTopics.join(', ')}\n\nNo recent news or viral content found. Based on these topics and what might be trending in AI/tech on YouTube and TikTok, create a brief summary and 1-2 content ideas.`;
 
-    const response = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const response = await llmChat({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 1200,
+      maxTokens: 1200,
+      category: 'news-research',
     });
 
-    const content = response.choices[0].message.content || '';
-    const duration = Date.now() - startTime;
-
-    logAiUsage({
-      category: 'news-research',
-      tokensUsed: response.usage?.total_tokens || 0,
-      durationMs: duration,
-      success: true,
-    }).catch(console.error);
-
-    const result = parseAiResponse(content);
-    return Response.json(result);
+    const result = parseAiResponse(response.content);
+    return Response.json({
+      ...result,
+      meta: { cached, fetchedAt: fetchedAt.toISOString() },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('News research error:', error);

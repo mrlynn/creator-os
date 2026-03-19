@@ -59,6 +59,15 @@
 - **Topic performance** — Heatmap polish, trend charts
 - **"What to make next"** — Weekly suggestions from idea bank + performance
 
+### Sprint 12: Settings & AI Configuration
+
+**Roadmap:** `.planning/SETTINGS-ROADMAP.md`
+
+- **Phase 1:** Config foundation (AppConfig model, API, env-only keys)
+- **Phase 2:** LLM provider abstraction (multi-provider, model selection)
+- **Phase 3:** Embeddings, RAG & tunables (all config-driven)
+- **Phase 4:** Settings page UI (LLM, embeddings, RAG, tunables sections)
+
 ## Priority Matrix
 
 | Impact | Effort | Feature |

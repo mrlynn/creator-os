@@ -1,5 +1,7 @@
 import { connectToDatabase } from '@/lib/db/connection';
 import { AiUsageLog } from '@/lib/db/models/AiUsageLog';
+import type { AiUsageProvider } from '@/lib/db/models/AiUsageLog';
+import { estimateCost, estimateCostFromTotal } from './cost-pricing';
 
 export async function logAiUsage(data: {
   category:
@@ -20,6 +22,9 @@ export async function logAiUsage(data: {
   tokensUsed: number;
   durationMs: number;
   aiModel?: string;
+  provider?: AiUsageProvider;
+  promptTokens?: number;
+  completionTokens?: number;
   success?: boolean;
   errorMessage?: string;
   relatedDocumentId?: string;
@@ -27,11 +32,35 @@ export async function logAiUsage(data: {
 }) {
   try {
     await connectToDatabase();
+
+    const provider = data.provider ?? 'openai';
+    const model = data.aiModel || 'gpt-4-turbo';
+
+    let costEstimate: number;
+    if (
+      typeof data.promptTokens === 'number' &&
+      typeof data.completionTokens === 'number' &&
+      provider !== 'voyage'
+    ) {
+      costEstimate = estimateCost(
+        provider,
+        model,
+        data.promptTokens,
+        data.completionTokens
+      );
+    } else {
+      costEstimate = estimateCostFromTotal(provider, model, data.tokensUsed);
+    }
+
     await AiUsageLog.create({
       category: data.category,
       tokensUsed: data.tokensUsed,
+      promptTokens: data.promptTokens,
+      completionTokens: data.completionTokens,
       durationMs: data.durationMs,
-      aiModel: data.aiModel || 'gpt-4-turbo',
+      aiModel: model,
+      provider,
+      costEstimate,
       success: data.success !== false,
       errorMessage: data.errorMessage,
       relatedDocumentId: data.relatedDocumentId,

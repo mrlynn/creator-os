@@ -1,9 +1,7 @@
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 import { getRagContext } from './rag-retrieval';
-
-const MAX_SCRIPT_CHARS = 4000;
+import { getAppConfig } from '@/lib/config/app-config';
 const TIMESTAMP_REGEX = /^\d{1,2}:\d{2}$/;
 
 function isValidTimestampRange(
@@ -41,12 +39,11 @@ export async function generateClipConcepts(
   | { success: true; clips: ClipConcept[] }
   | { success: false; error: string }
 > {
-  const client = getOpenAIClient();
-  const start = Date.now();
-
+  const config = await getAppConfig();
+  const maxScriptChars = config.tunables.repurposingMaxScriptChars;
   const truncatedScript =
-    script.length > MAX_SCRIPT_CHARS
-      ? script.slice(0, MAX_SCRIPT_CHARS) + '...[truncated]'
+    script.length > maxScriptChars
+      ? script.slice(0, maxScriptChars) + '...[truncated]'
       : script;
 
   const profilePrefix = profileId ? await getProfileInstruction(profileId) : '';
@@ -86,18 +83,18 @@ Target platform for clips: ${platform}
 Identify 4–6 self-contained moments. Return JSON: { "clips": [ { clipNumber, conceptTitle, originalSection, estimatedDuration, newHook, script, onScreenTextSuggestions, whyItStandsAlone, timestampRange?: { start: "MM:SS", end: "MM:SS" } } ] }`;
 
   try {
-    const res = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
+    const res = await llmChat({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
       ],
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
       temperature: 0.5,
-      max_tokens: 4000,
+      maxTokens: 4000,
+      category: 'repurposing',
     });
 
-    const text = res.choices[0].message?.content || '{}';
+    const text = res.content || '{}';
     let clean = text.trim();
     if (clean.startsWith('```json')) {
       clean = clean.slice(7);
@@ -113,22 +110,8 @@ Identify 4–6 self-contained moments. Return JSON: { "clips": [ { clipNumber, c
     const clips = Array.isArray(parsed.clips) ? parsed.clips : parsed;
 
     if (!Array.isArray(clips) || clips.length === 0) {
-      logAiUsage({
-        category: 'repurposing',
-        tokensUsed: res.usage?.total_tokens || 0,
-        durationMs: Date.now() - start,
-        success: false,
-        errorMessage: 'No clips returned',
-      }).catch(console.error);
       return { success: false, error: 'No clips returned from AI' };
     }
-
-    logAiUsage({
-      category: 'repurposing',
-      tokensUsed: res.usage?.total_tokens || 0,
-      durationMs: Date.now() - start,
-      success: true,
-    }).catch(console.error);
 
     const normalizedClips: ClipConcept[] = clips.map((c) => {
       const clip = { ...c } as ClipConcept;
@@ -147,13 +130,6 @@ Identify 4–6 self-contained moments. Return JSON: { "clips": [ { clipNumber, c
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    logAiUsage({
-      category: 'repurposing',
-      tokensUsed: 0,
-      durationMs: Date.now() - start,
-      success: false,
-      errorMessage,
-    }).catch(console.error);
     return { success: false, error: errorMessage };
   }
 }

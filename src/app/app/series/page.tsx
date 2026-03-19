@@ -87,7 +87,7 @@ export default function SeriesPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>

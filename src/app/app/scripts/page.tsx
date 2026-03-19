@@ -129,17 +129,17 @@ export default function ScriptsPage() {
                   color="error"
                   onClick={async (e) => {
                     e.preventDefault();
-                    if (!confirm('Archive this script?')) return;
+                    if (!confirm('Delete this script? This cannot be undone.')) return;
                     try {
                       const res = await fetch(`/api/scripts/${script._id}`, { method: 'DELETE' });
-                      if (!res.ok) throw new Error('Failed to archive');
-                      setSuccessMessage('Script archived');
+                      if (!res.ok) throw new Error('Failed to delete');
+                      setSuccessMessage('Script deleted');
                       fetchScripts();
                     } catch {
-                      setError('Failed to archive script');
+                      setError('Failed to delete script');
                     }
                   }}
-                  aria-label="Archive"
+                  aria-label="Delete"
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>

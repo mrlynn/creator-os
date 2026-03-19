@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { Box, AppBar, Toolbar, IconButton, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { AppSidebar, SIDEBAR_WIDTH } from './AppSidebar';
+import { AppSidebar } from './AppSidebar';
 
 const PAGE_TITLES: Record<string, string> = {
   '/app/dashboard': 'Dashboard',
@@ -17,6 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/app/tags': 'Tags',
   '/app/ai-toolkit': 'AI Toolkit',
   '/app/analytics': 'Analytics',
+  '/app/ai-cost': 'AI Cost',
   '/app/settings': 'Settings',
   '/app/help': 'Help',
 };
@@ -37,13 +38,16 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
+  const handleDrawerClose = () => setMobileOpen(false);
+  const handleDrawerOpen = () => setMobileOpen(true);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppSidebar
         variant={isDesktop ? 'permanent' : 'temporary'}
         open={isDesktop ? true : mobileOpen}
-        onClose={handleDrawerToggle}
+        onClose={handleDrawerClose}
+        onOpen={handleDrawerOpen}
       />
 
       {/* Mobile app bar */}
@@ -84,8 +88,7 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
           overflow: 'auto',
           p: { xs: 2, sm: 3 },
           pt: isDesktop ? 3 : 8,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-          ml: isDesktop ? `${SIDEBAR_WIDTH}px` : 0,
+          paddingBottom: 'env(safe-area-inset-bottom)',
           minHeight: '100vh',
         }}
       >

@@ -73,6 +73,17 @@ Plans 03–06 deferred (Phase 2: OAuth + upload).
 
 See `.planning/phases/sprint5/sprint5-SUMMARY.md` for execution summary.
 
+## Settings Initiative (New)
+
+**Roadmap:** `.planning/SETTINGS-ROADMAP.md`  
+**Requirements:** `.planning/SETTINGS-REQUIREMENTS.md`
+
+**Phases:** 4 (Config Foundation → LLM Abstraction → Embeddings/RAG/Tunables → Settings UI)  
+**Status:** Not started  
+**Next:** Plan Phase 1 (AppConfig model, API, config resolver)
+
+---
+
 ## Session Continuity
 
 Last session: 2026-03-18

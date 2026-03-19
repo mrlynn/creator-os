@@ -87,7 +87,7 @@ export default function IdeaDetailPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -97,7 +97,7 @@ export default function IdeaDetailPage() {
 
   if (error || !idea) {
     return (
-      <Container>
+      <Container maxWidth="lg">
         <Box sx={{ py: 3 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => router.back()}>
             Back

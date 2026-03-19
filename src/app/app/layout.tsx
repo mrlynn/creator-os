@@ -1,4 +1,3 @@
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { AppLayoutClient } from '@/components/shared-ui/AppLayoutClient';
 import { ToastProvider } from '@/components/shared-ui/Toast';
 import { GlobalSearchProvider } from '@/components/shared-ui/GlobalSearchContext';
@@ -17,12 +16,10 @@ export default async function AppLayout({
   }
 
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <GlobalSearchProvider>
-          <AppLayoutClient>{children}</AppLayoutClient>
-        </GlobalSearchProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <ToastProvider>
+      <GlobalSearchProvider>
+        <AppLayoutClient>{children}</AppLayoutClient>
+      </GlobalSearchProvider>
+    </ToastProvider>
   );
 }

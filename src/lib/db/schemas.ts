@@ -169,6 +169,46 @@ export const CreatePlatformConnectionSchema = z.object({
 
 export const UpdatePlatformConnectionSchema = CreatePlatformConnectionSchema.partial();
 
+// AppConfig Schemas
+export const AppConfigLlmSchema = z.object({
+  provider: z.enum(['openai', 'anthropic', 'ollama']),
+  model: z.string().min(1).max(100),
+  ollamaBaseUrl: z.string().url().optional(),
+});
+
+export const AppConfigEmbeddingsSchema = z.object({
+  provider: z.enum(['voyage', 'ollama']),
+  model: z.string().min(1).max(100),
+  dimensions: z.number().min(256).max(4096),
+  maxTextChars: z.number().min(100).max(50000),
+  ollamaBaseUrl: z.string().url().optional(),
+  ollamaCliPath: z.string().max(500).optional(),
+});
+
+export const AppConfigRagSchema = z.object({
+  maxTotalChars: z.number().min(100).max(10000),
+  excerptChars: z.number().min(50).max(1000),
+  numCandidatesBase: z.number().min(10).max(500),
+  numCandidatesMultiplier: z.number().min(5).max(100),
+});
+
+export const AppConfigTunablesSchema = z.object({
+  repurposingMaxScriptChars: z.number().min(500).max(20000),
+  autoTaggerMaxTextChars: z.number().min(100).max(5000),
+  searchDefaultLimit: z.number().min(1).max(50),
+  searchDefaultMode: z.enum(['vector', 'hybrid']),
+  newsResearchCacheHours: z.number().min(1).max(168),
+});
+
+export const AppConfigSchema = z.object({
+  llm: AppConfigLlmSchema.optional(),
+  embeddings: AppConfigEmbeddingsSchema.optional(),
+  rag: AppConfigRagSchema.optional(),
+  tunables: AppConfigTunablesSchema.optional(),
+});
+
+export const UpdateAppConfigSchema = AppConfigSchema.partial();
+
 // Export types
 export type CreateTagInput = z.infer<typeof CreateTagSchema>;
 export type UpdateTagInput = z.infer<typeof UpdateTagSchema>;
@@ -204,3 +244,5 @@ export type CreateSeriesInput = z.infer<typeof CreateSeriesSchema>;
 export type UpdateSeriesInput = z.infer<typeof UpdateSeriesSchema>;
 export type CreatePlatformConnectionInput = z.infer<typeof CreatePlatformConnectionSchema>;
 export type UpdatePlatformConnectionInput = z.infer<typeof UpdatePlatformConnectionSchema>;
+export type AppConfigInput = z.infer<typeof AppConfigSchema>;
+export type UpdateAppConfigInput = z.infer<typeof UpdateAppConfigSchema>;

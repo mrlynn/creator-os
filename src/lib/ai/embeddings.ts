@@ -1,7 +1,7 @@
 import { VoyageAIClient } from 'voyageai';
 import { logAiUsage } from './usage-logger';
-
-const MAX_TEXT_CHARS = 8000;
+import { getAppConfig } from '@/lib/config/app-config';
+import { ollamaEmbed } from './ollama-embed';
 
 let voyageClient: VoyageAIClient | null = null;
 
@@ -24,16 +24,35 @@ export async function embed(
     return [];
   }
 
+  const config = await getAppConfig();
+  const { provider, model, dimensions, maxTextChars, ollamaBaseUrl } =
+    config.embeddings;
+
   const truncated =
-    text.length > MAX_TEXT_CHARS ? text.slice(0, MAX_TEXT_CHARS) : text;
+    text.length > maxTextChars ? text.slice(0, maxTextChars) : text;
   const start = Date.now();
+
+  if (provider === 'ollama') {
+    const baseUrl = ollamaBaseUrl ?? 'http://localhost:11434';
+    const embedding = await ollamaEmbed(baseUrl, model, truncated);
+    const durationMs = Date.now() - start;
+    logAiUsage({
+      category: 'embedding',
+      tokensUsed: 0,
+      durationMs,
+      aiModel: model,
+      provider: 'ollama',
+      success: true,
+    }).catch(console.error);
+    return embedding;
+  }
 
   const client = getVoyageClient();
   const res = await client.embed({
     input: truncated,
-    model: 'voyage-3-large',
+    model,
     inputType: options?.inputType ?? 'document',
-    outputDimension: 1024,
+    outputDimension: dimensions,
   });
 
   const durationMs = Date.now() - start;
@@ -41,7 +60,8 @@ export async function embed(
     category: 'embedding',
     tokensUsed: res.usage?.totalTokens ?? 0,
     durationMs,
-    aiModel: 'voyage-3-large',
+    aiModel: model,
+    provider: 'voyage',
     success: true,
   }).catch(console.error);
 

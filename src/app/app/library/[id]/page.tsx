@@ -376,7 +376,7 @@ export default function EpisodeDetailPage() {
 
   if (loading) {
     return (
-      <Container>
+      <Container maxWidth="md">
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -386,7 +386,7 @@ export default function EpisodeDetailPage() {
 
   if (!episode) {
     return (
-      <Container>
+      <Container maxWidth="md">
         <Alert severity="error">Episode not found</Alert>
         <Button sx={{ mt: 2 }} component={Link} href="/app/library" startIcon={<ArrowBackIcon />}>
           Back to Library

@@ -1,5 +1,4 @@
-import { getOpenAIClient } from './openai-client';
-import { logAiUsage } from './usage-logger';
+import { llmChat } from './llm-provider';
 import { getProfileInstruction } from './instruction-profile';
 import { getRagContext } from './rag-retrieval';
 
@@ -9,7 +8,6 @@ export async function generateHooks(
   profileId?: string | null,
   options?: { includeRag?: boolean; ragLimit?: number }
 ) {
-  const client = getOpenAIClient();
   const startTime = Date.now();
 
   try {
@@ -54,34 +52,26 @@ Return exactly 5 hooks, one per line, numbered 1-5. Keep each under 20 words.${r
         ]
       : [{ role: 'user' as const, content: tiktokPrompt }];
 
-    const [youtubeResponse, tiktokResponse] = await Promise.all([
-      client.chat.completions.create({
-        model: 'gpt-4-turbo',
+    const [youtubeResult, tiktokResult] = await Promise.all([
+      llmChat({
         messages: youtubeMessages,
         temperature: 0.8,
-        max_tokens: 500,
+        maxTokens: 500,
+        category: 'hook-generation',
       }),
-      client.chat.completions.create({
-        model: 'gpt-4-turbo',
+      llmChat({
         messages: tiktokMessages,
         temperature: 0.8,
-        max_tokens: 500,
+        maxTokens: 500,
+        category: 'hook-generation',
       }),
     ]);
 
     const duration = Date.now() - startTime;
-    const totalTokens = (youtubeResponse.usage?.total_tokens || 0) + (tiktokResponse.usage?.total_tokens || 0);
+    const totalTokens = youtubeResult.tokensUsed + tiktokResult.tokensUsed;
 
-    const youtubeHooks = parseHooks(youtubeResponse.choices[0].message.content || '');
-    const tiktokHooks = parseHooks(tiktokResponse.choices[0].message.content || '');
-
-    // Fire-and-forget logging
-    logAiUsage({
-      category: 'hook-generation',
-      tokensUsed: totalTokens,
-      durationMs: duration,
-      success: true,
-    }).catch(console.error);
+    const youtubeHooks = parseHooks(youtubeResult.content);
+    const tiktokHooks = parseHooks(tiktokResult.content);
 
     return {
       success: true,
@@ -93,15 +83,6 @@ Return exactly 5 hooks, one per line, numbered 1-5. Keep each under 20 words.${r
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    logAiUsage({
-      category: 'hook-generation',
-      tokensUsed: 0,
-      durationMs: duration,
-      success: false,
-      errorMessage,
-    }).catch(console.error);
-
     return {
       success: false,
       error: errorMessage,
