@@ -14,6 +14,7 @@ dist
 
 # Misc
 *.pem
+db-dump-*
 .DS_Store
 .env
 .env.local
