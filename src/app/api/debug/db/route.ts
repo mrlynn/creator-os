@@ -32,6 +32,13 @@ export async function GET() {
       mongodbUriDatabase: parsedDb,
       mongodbUriPreview: rawUri !== 'not set' ? rawUri.replace(/:[^:@]+@/, ':****@') : rawUri,
       collections: counts,
+      env: {
+        GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+        googleRelatedKeys: Object.keys(process.env).filter((k) =>
+          k.toUpperCase().includes('GOOGLE')
+        ),
+      },
       note: 'If database is "test", another env file or shell env may be overriding .env.local. Restart dev server after fixing.',
     });
   } catch (error) {
