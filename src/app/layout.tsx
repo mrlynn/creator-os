@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { Box } from '@mui/material';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { Footer } from '@/components/shared-ui/Footer';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -26,7 +28,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className={inter.className}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Box component="main" sx={{ flex: 1 }}>{children}</Box>
+            <Footer />
+          </Box>
+        </ThemeProvider>
       </body>
     </html>
   );

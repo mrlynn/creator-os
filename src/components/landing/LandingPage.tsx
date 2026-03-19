@@ -247,28 +247,6 @@ export function LandingPage() {
           </Paper>
         </Container>
       </Box>
-
-      {/* Footer */}
-      <Box
-        component="footer"
-        sx={{
-          py: 2,
-          px: 2,
-          borderTop: 1,
-          borderColor: 'divider',
-          textAlign: 'center',
-        }}
-      >
-        <Button
-          variant="text"
-          component={Link}
-          href="/login"
-          size="small"
-          color="inherit"
-        >
-          Sign in
-        </Button>
-      </Box>
     </Box>
   );
 }
